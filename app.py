@@ -7,8 +7,6 @@ import io
 # -------------------------------------------------------------------------
 # 1. BASE DE DADOS INTERNA (TABELAS FITESCOLA DO UTILIZADOR)
 # -------------------------------------------------------------------------
-# Estrutura extraída do arquivo enviado pelo professor
-
 dados_fem = {
     "Idade": [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
     "VV_ZS": [13, 16, 20, 22, 25, 27, 29, 32, 35, 37, 37, 37],
@@ -49,51 +47,47 @@ ref_fem = pd.DataFrame(dados_fem)
 ref_masc = pd.DataFrame(dados_masc)
 
 # -------------------------------------------------------------------------
-# 2. FUNÇÕES DE LOGICA E PROCESSAMENTO
+# 2. FUNÇÕES DE LÓGICA E PROCESSAMENTO
 # -------------------------------------------------------------------------
 def avaliar_teste(valor, idade, genero, teste):
     try:
         val = float(str(valor).replace(',', '.'))
     except:
-        return "N/A", "Sem dados válidos."
+        return "N/A", "Sem dados válidos enviados."
 
     df_ref = ref_fem if genero.upper() in ['F', 'FEMININO', 'RAPARIGA'] else ref_masc
-    
-    # Encontrar a linha da idade correspondente (limitar entre 9 e 20)
     idade_busca = max(9, min(20, int(idade)))
     linha = df_ref[df_ref['Idade'] == idade_busca].iloc[0]
     
     zs = linha[f"{teste}_ZS"]
     pa = linha[f"{teste}_PA"]
     
-    # Testes onde MENOS tempo/resultado é MELHOR (Velocidade e Agilidade)
     if teste in ["VEL", "AGI"]:
         if val <= pa:
-            return "PA", "Parabéns! Nível de elite atlética."
+            return "PA", "Parabéns! Estás num nível de excelência e elite atlética. Continua focado."
         elif val <= zs:
-            return "ZS", "Estás no bom caminho! Mantém o teu nível."
+            return "ZS", "Estás no bom caminho! Mantém a regularidade e consistência nos teus treinos."
         else:
-            return "AZS", "Precisas de melhorar. Foca no treino de velocidade/coordenação."
-    # Testes onde MAIS é MELHOR (Vaivém, Abdominais, Flexões, Impulsão, Senta e Alcança)
+            return "AZS", "Precisas de melhorar. Foca no treino dinâmico de velocidade e coordenação motora."
     else:
         if val >= pa:
-            return "PA", "Parabéns! Nível de elite atlética."
+            return "PA", "Parabéns! Estás num nível de excelência e elite atlética. Continua focado."
         elif val >= zs:
-            return "ZS", "Estás no bom caminho! Mantém a tua condição física."
+            return "ZS", "Estás no bom caminho! Mantém a regularidade e condicionamento físico geral."
         else:
-            return "AZS", "Precisas de melhorar. Requer mais prática e dedicação regular."
+            return "AZS", "Precisas de melhorar. Requer mais empenho, prática e dedicação regular nas aulas."
 
 def criar_pdf(aluno, resultados):
     pdf = FPDF()
     pdf.add_page()
     
-    # Cabeçalho decorativo
-    pdf.set_fill_color(41, 128, 185) # Azul pedagógico
+    # Cabeçalho decorativo azul
+    pdf.set_fill_color(41, 128, 185)
     pdf.rect(0, 0, 210, 40, 'F')
     
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", 'B', 18)
-    pdf.cell(0, 10, "RELATÓRIO DE CONDICÃO FÍSICA - FITESCOLA", ln=True, align='C')
+    pdf.cell(0, 10, "RELATÓRIO DE CONDIÇÃO FÍSICA - FITESCOLA", ln=True, align='C')
     pdf.set_font("Arial", 'I', 11)
     pdf.cell(0, 10, "EduTwin - Apoio Inteligente à Educação Física", ln=True, align='C')
     pdf.ln(15)
@@ -110,14 +104,20 @@ def criar_pdf(aluno, resultados):
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # Tabela de Resultados
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(45, 8, "Teste Efetuado", 1, 0, 'C')
-    pdf.cell(30, 8, "Resultado", 1, 0, 'C')
-    pdf.cell(40, 8, "Classificação", 1, 0, 'C')
-    pdf.cell(75, 8, "Feedback Pedagógico", 1, 1, 'C')
+    # Tabela de Resultados - Definição exata de larguras (Soma = 190mm para caber na página A4)
+    w_teste = 45
+    w_resultado = 25
+    w_classif = 45
+    w_feedback = 75
     
-    pdf.set_font("Arial", '', 10)
+    # Cabeçalho da Tabela
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(w_teste, 8, "Teste Efetuado", 1, 0, 'C')
+    pdf.cell(w_resultado, 8, "Resultado", 1, 0, 'C')
+    pdf.cell(w_classif, 8, "Classificação", 1, 0, 'C')
+    pdf.cell(w_feedback, 8, "Feedback Pedagógico", 1, 1, 'C')
+    
+    pdf.set_font("Arial", '', 9)
     mapa_testes = {
         "Vaivém (Percursos)": "VV", "Abdominais (Rep.)": "ABD", 
         "Flexões (Rep.)": "FLX", "Imp. Horizontal (cm)": "IMP",
@@ -130,23 +130,48 @@ def criar_pdf(aluno, resultados):
             res_aluno = aluno[nome_exibicao]
             classe, fb = resultados[sigla]
             
-            pdf.cell(45, 8, nome_exibicao, 1, 0, 'L')
-            pdf.cell(30, 8, str(res_aluno), 1, 0, 'C')
-            
-            # Cores para a classificação
+            # Mapeamento do texto descritivo da zona
             if classe == "PA":
-                pdf.set_text_color(39, 174, 96) # Verde
                 txt_classe = "Perfil Atlético"
             elif classe == "ZS":
-                pdf.set_text_color(41, 128, 185) # Azul
                 txt_classe = "Zona Saudável"
             else:
-                pdf.set_text_color(192, 41, 43) # Vermelho
                 txt_classe = "Abaixo Zona Saudável"
+            
+            # --- CÁLCULO DA ALTURA DINÂMICA ---
+            # O truque está aqui: calculamos quantas linhas o feedback vai ocupar antes de desenhar
+            # Dividindo a largura total do feedback (75mm) para antecipar a quebra do texto.
+            linhas_necessarias = len(pdf.multi_cell(w_feedback, 5, fb, split_only=True))
+            altura_linha = max(8, linhas_necessarias * 5) # Mínimo de 8mm de altura por linha de tabela
+            
+            # Guardar a posição X e Y atual antes de desenhar a linha da tabela
+            x_atual = pdf.get_x()
+            y_atual = pdf.get_y()
+            
+            # Desenhar as 3 primeiras colunas com a altura calculada
+            pdf.cell(w_teste, altura_linha, nome_exibicao, 1, 0, 'L')
+            pdf.cell(w_resultado, altura_linha, str(res_aluno), 1, 0, 'C')
+            
+            # Aplicar cores personalizadas ao texto da classificação
+            if classe == "PA":
+                pdf.set_text_color(39, 174, 96) # Verde
+            elif classe == "ZS":
+                pdf.set_text_color(41, 128, 185) # Azul
+            else:
+                pdf.set_text_color(192, 41, 43) # Vermelho
                 
-            pdf.cell(40, 8, txt_classe, 1, 0, 'C')
-            pdf.set_text_color(0, 0, 0)
-            pdf.cell(75, 8, fb, 1, 1, 'L')
+            pdf.cell(w_classif, altura_linha, txt_classe, 1, 0, 'C')
+            pdf.set_text_color(0, 0, 0) # Reset para preto
+            
+            # Desenhar a última coluna (Feedback) usando multi_cell para moldar o texto automaticamente
+            # Movemos a posição X explicitamente para a quarta coluna
+            pdf.set_xy(x_atual + w_teste + w_resultado + w_classif, y_atual)
+            
+            # O multi_cell quebra o texto perfeitamente. No final ele move o cursor para a linha seguinte.
+            pdf.multi_cell(w_feedback, altura_linha / linhas_necessarias, fb, 1, 'L')
+            
+            # Garantir que o cursor volta para a margem esquerda na linha seguinte correta
+            pdf.set_xy(x_atual, y_atual + altura_linha)
             
     pdf.ln(10)
     
@@ -166,18 +191,15 @@ def criar_pdf(aluno, resultados):
 st.title("🏋️‍♂️ EduTwin: Portal Interativo FitEscola")
 st.markdown("Bem-vindo, colega! Esta ferramenta processa os dados do teu Google Sheets e gera instantaneamente relatórios pedagógicos em PDF.")
 
-# Instruções de Formato para o Sheets
 with st.expander("📌 Como deve ser a estrutura do teu Google Sheets? (Clica para ver)"):
     st.write("O teu arquivo de dados dos alunos deve conter exatamente estas colunas:")
     st.code("Nome, Idade, Género, Email, Vaivém (Percursos), Abdominais (Rep.), Flexões (Rep.), Imp. Horizontal (cm), Velocidade 40m (s), Senta e Alcança (cm), Agilidade (s)")
 
-# Input do link
 link_sheets = st.text_input("Insere aqui o link do teu Google Sheets (Publicado como CSV):", 
                             placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv")
 
 if link_sheets:
     try:
-        # Tenta ler o link direto transformando em formato de exportação de CSV caso o utilizador ponha o link normal
         if "edit?usp=sharing" in link_sheets:
             link_csv = link_sheets.replace("edit?usp=sharing", "export?format=csv")
         elif "pubhtml" in link_sheets:
@@ -192,11 +214,9 @@ if link_sheets:
         st.subheader("📊 Processamento em Massa")
         if st.button("Analisar Aptidão Física & Gerar PDFs"):
             
-            # Dicionário para armazenar ficheiros criados
             lista_pdfs = {}
             
             for index, aluno in df_alunos.iterrows():
-                # Evitar linhas em branco
                 if pd.isna(aluno['Nome']):
                     continue
                     
@@ -209,7 +229,6 @@ if link_sheets:
                 res_aluno["SA"] = avaliar_teste(aluno.get("Senta e Alcança (cm)", 0), aluno['Idade'], aluno['Género'], "SA")
                 res_aluno["AGI"] = avaliar_teste(aluno.get("Agilidade (s)", 0), aluno['Idade'], aluno['Género'], "AGI")
                 
-                # Gerar o binário do PDF
                 pdf_bytes = criar_pdf(aluno, res_aluno)
                 nome_limpo = str(aluno['Nome']).replace(" ", "_")
                 lista_pdfs[f"Relatorio_{nome_limpo}.pdf"] = pdf_bytes
@@ -217,7 +236,6 @@ if link_sheets:
             st.balloons()
             st.success(f"Foram processados {len(lista_pdfs)} alunos!")
             
-            # Disponibilizar downloads individuais na interface
             st.write("### ⬇️ Descarregar Relatórios Individuais")
             for nome_arq, dados_arq in lista_pdfs.items():
                 st.download_button(label=f"📥 {nome_arq}", data=dados_arq, file_name=nome_arq, mime='application/pdf')
