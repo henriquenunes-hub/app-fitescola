@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from fpdf import FPDF
+from datetime import datetime
 import io
+import os
 
 # -------------------------------------------------------------------------
 # 1. BASE DE DADOS INTERNA (TABELAS FITESCOLA DO UTILIZADOR)
@@ -47,7 +49,27 @@ ref_fem = pd.DataFrame(dados_fem)
 ref_masc = pd.DataFrame(dados_masc)
 
 # -------------------------------------------------------------------------
-# 2. FUNÇÕES DE LÓGICA E PROCESSAMENTO
+# 2. SUBCLASSE CUSTOMIZADA DO FPDF PARA INCLUIR RODAPÉ AUTOMÁTICO
+# -------------------------------------------------------------------------
+class PDF_Relatorio(FPDF):
+    def __init__(self, nome_professor, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.nome_professor = nome_professor
+
+    def footer(self):
+        # Posicionar a 15 mm do fundo da página
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.set_text_color(127, 140, 141) # Cinzento discreto
+        # Linha separadora do rodapé
+        self.line(10, self.get_y() - 2, 200, self.get_y() - 2)
+        # Texto do rodapé: Professor responsável e paginação automática
+        texto_rodape = f"Relatório gerado por EduTwin | Professor Responsável: {self.nome_professor}"
+        self.cell(0, 10, texto_rodape, 0, 0, 'L')
+        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
+
+# -------------------------------------------------------------------------
+# 3. FUNÇÕES DE LÓGICA E PROCESSAMENTO
 # -------------------------------------------------------------------------
 def avaliar_teste(valor, idade, genero, teste):
     try:
@@ -77,34 +99,56 @@ def avaliar_teste(valor, idade, genero, teste):
         else:
             return "AZS", "Precisas de melhorar. Requer mais empenho, prática e dedicação regular nas aulas."
 
-def criar_pdf(aluno, resultados):
-    pdf = FPDF()
+def criar_pdf(aluno, resultados, data_teste, nome_professor):
+    # Usar a nossa classe costumizada que injeta o rodapé automaticamente
+    pdf = PDF_Relatorio(nome_professor=nome_professor)
     pdf.add_page()
     
     # Cabeçalho decorativo azul
     pdf.set_fill_color(41, 128, 185)
-    pdf.rect(0, 0, 210, 40, 'F')
+    pdf.rect(0, 0, 210, 42, 'F')
     
+    # --- LOGÓTIPO DA ESCOLA (Canto Superior Esquerdo) ---
+    if os.path.exists("logo_escola.png"):
+        pdf.image("logo_escola.png", x=12, y=6, h=14)
+    elif os.path.exists("logo_escola.jpg"):
+        pdf.image("logo_escola.jpg", x=12, y=6, h=14)
+        
+    # --- LOGÓTIPO DO FITESCOLA (Canto Superior Direito) ---
+    if os.path.exists("logo_fitescola.png"):
+        pdf.image("logo_fitescola.png", x=170, y=6, h=14)
+    elif os.path.exists("logo_fitescola.jpg"):
+        pdf.image("logo_fitescola.jpg", x=170, y=6, h=14)
+
+    # Títulos do cabeçalho
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", 'B', 18)
-    pdf.cell(0, 10, "RELATÓRIO DE CONDIÇÃO FÍSICA - FITESCOLA", ln=True, align='C')
+    pdf.set_font("Arial", 'B', 16)
+    pdf.set_y(10)
+    pdf.cell(0, 8, "RELATÓRIO DE CONDIÇÃO FÍSICA", ln=True, align='C')
     pdf.set_font("Arial", 'I', 11)
-    pdf.cell(0, 10, "EduTwin - Apoio Inteligente à Educação Física", ln=True, align='C')
-    pdf.ln(15)
+    pdf.cell(0, 6, "Avaliação da Aptidão Física Escolar", ln=True, align='C')
     
-    # Dados do Aluno
+    # Reposicionar o cursor abaixo da faixa azul do cabeçalho
+    pdf.set_y(48)
+    
+    # Dados do Aluno e Data do Teste
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 7, f"Nome: {aluno['Nome']}", ln=True)
+    pdf.cell(130, 7, f"Nome: {aluno['Nome']}", ln=False)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_text_color(41, 128, 185)
+    pdf.cell(60, 7, f"Data do Teste: {data_teste}", ln=True, align='R')
+    
+    pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", '', 11)
-    pdf.cell(70, 7, f"Idade: {aluno['Idade']} anos", ln=False)
-    pdf.cell(70, 7, f"Género: {aluno['Género']}", ln=True)
-    pdf.cell(0, 7, f"Contacto: {aluno['Email']}", ln=True)
-    pdf.ln(5)
+    pdf.cell(60, 7, f"Idade: {aluno['Idade']} anos", ln=False)
+    pdf.cell(60, 7, f"Género: {aluno['Género']}", ln=False)
+    pdf.cell(70, 7, f"Contacto: {aluno['Email']}", ln=True, align='R')
+    pdf.ln(4)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # Tabela de Resultados - Definição exata de larguras (Soma = 190mm para caber na página A4)
+    # Tabela de Resultados - Definição exata de larguras (Soma = 190mm)
     w_teste = 45
     w_resultado = 25
     w_classif = 45
@@ -130,7 +174,6 @@ def criar_pdf(aluno, resultados):
             res_aluno = aluno[nome_exibicao]
             classe, fb = resultados[sigla]
             
-            # Mapeamento do texto descritivo da zona
             if classe == "PA":
                 txt_classe = "Perfil Atlético"
             elif classe == "ZS":
@@ -138,47 +181,36 @@ def criar_pdf(aluno, resultados):
             else:
                 txt_classe = "Abaixo Zona Saudável"
             
-            # --- CÁLCULO DA ALTURA DINÂMICA ---
-            # O truque está aqui: calculamos quantas linhas o feedback vai ocupar antes de desenhar
-            # Dividindo a largura total do feedback (75mm) para antecipar a quebra do texto.
+            # Cálculo de Altura Dinâmica para Moldar o Texto
             linhas_necessarias = len(pdf.multi_cell(w_feedback, 5, fb, split_only=True))
-            altura_linha = max(8, linhas_necessarias * 5) # Mínimo de 8mm de altura por linha de tabela
+            altura_linha = max(8, linhas_necessarias * 5)
             
-            # Guardar a posição X e Y atual antes de desenhar a linha da tabela
             x_atual = pdf.get_x()
             y_atual = pdf.get_y()
             
-            # Desenhar as 3 primeiras colunas com a altura calculada
             pdf.cell(w_teste, altura_linha, nome_exibicao, 1, 0, 'L')
             pdf.cell(w_resultado, altura_linha, str(res_aluno), 1, 0, 'C')
             
-            # Aplicar cores personalizadas ao texto da classificação
             if classe == "PA":
-                pdf.set_text_color(39, 174, 96) # Verde
+                pdf.set_text_color(39, 174, 96)
             elif classe == "ZS":
-                pdf.set_text_color(41, 128, 185) # Azul
+                pdf.set_text_color(41, 128, 185)
             else:
-                pdf.set_text_color(192, 41, 43) # Vermelho
+                pdf.set_text_color(192, 41, 43)
                 
             pdf.cell(w_classif, altura_linha, txt_classe, 1, 0, 'C')
-            pdf.set_text_color(0, 0, 0) # Reset para preto
+            pdf.set_text_color(0, 0, 0)
             
-            # Desenhar a última coluna (Feedback) usando multi_cell para moldar o texto automaticamente
-            # Movemos a posição X explicitamente para a quarta coluna
             pdf.set_xy(x_atual + w_teste + w_resultado + w_classif, y_atual)
-            
-            # O multi_cell quebra o texto perfeitamente. No final ele move o cursor para a linha seguinte.
             pdf.multi_cell(w_feedback, altura_linha / linhas_necessarias, fb, 1, 'L')
-            
-            # Garantir que o cursor volta para a margem esquerda na linha seguinte correta
             pdf.set_xy(x_atual, y_atual + altura_linha)
             
-    pdf.ln(10)
+    pdf.ln(8)
     
     # Bloco de Sugestões Gerais de Melhoria
     pdf.set_fill_color(245, 247, 250)
-    pdf.rect(10, pdf.get_y(), 190, 35, 'F')
-    pdf.set_font("Arial", 'B', 11)
+    pdf.rect(10, pdf.get_y(), 190, 32, 'F')
+    pdf.set_font("Arial", 'B', 10.5)
     pdf.cell(0, 6, "Recomendações Gerais do teu Professor:", ln=True)
     pdf.set_font("Arial", '', 9.5)
     pdf.multi_cell(0, 5, "- Para zonas 'Abaixo da Zona Saudável': foca-te em treinar essa capacidade 2 a 3 vezes por semana (ex: corrida contínua para o Vaivém, ou pranchas/flexões controladas para a força).\n- Se estás na 'Zona Saudável' ou 'Perfil Atlético': Continua ativo na escola e nos treinos para manteres a tua excelente saúde funcional!")
@@ -186,13 +218,32 @@ def criar_pdf(aluno, resultados):
     return pdf.output(dest='S').encode('latin-1')
 
 # -------------------------------------------------------------------------
-# 3. INTERFACE STREAMLIT
+# 4. INTERFACE STREAMLIT
 # -------------------------------------------------------------------------
 st.title("🏋️‍♂️ EduTwin: Portal Interativo FitEscola")
-st.markdown("Bem-vindo, colega! Esta ferramenta processa os dados do teu Google Sheets e gera instantaneamente relatórios pedagógicos em PDF.")
+st.markdown("Ferramenta avançada para gestão de aptidão física escolar.")
 
-with st.expander("📌 Como deve ser a estrutura do teu Google Sheets? (Clica para ver)"):
-    st.write("O teu arquivo de dados dos alunos deve conter exatamente estas colunas:")
+# Bloco de Configuração de Metadados e Customização do Professor
+st.sidebar.header("⚙️ Definições do Relatório")
+nome_prof = st.sidebar.text_input("Nome do Professor (Rodapé):", value="O teu Nome Completo")
+data_escolhida = st.sidebar.date_input("Data de Realização dos Testes:", datetime.today())
+data_formatada = data_escolhida.strftime("%d/%m/%Y")
+
+# Alertas sobre Logótipos na barra lateral
+st.sidebar.markdown("---")
+st.sidebar.subheader("🖼️ Logótipos no Cabeçalho")
+if not (os.path.exists("logo_escola.png") or os.path.exists("logo_escola.jpg")):
+    st.sidebar.warning("⚠️ 'logo_escola.png' não encontrado no GitHub. O cabeçalho ficará apenas com texto à esquerda.")
+else:
+    st.sidebar.success("✔️ Logótipo da Escola detetado.")
+
+if not (os.path.exists("logo_fitescola.png") or os.path.exists("logo_fitescola.jpg")):
+    st.sidebar.warning("⚠️ 'logo_fitescola.png' não encontrado no GitHub. O cabeçalho ficará apenas com texto à direita.")
+else:
+    st.sidebar.success("✔️ Logótipo do FitEscola detetado.")
+
+with st.expander("📌 Estrutura Obrigatória do Google Sheets"):
+    st.write("O teu arquivo de dados deve conter exatamente estas colunas:")
     st.code("Nome, Idade, Género, Email, Vaivém (Percursos), Abdominais (Rep.), Flexões (Rep.), Imp. Horizontal (cm), Velocidade 40m (s), Senta e Alcança (cm), Agilidade (s)")
 
 link_sheets = st.text_input("Insere aqui o link do teu Google Sheets (Publicado como CSV):", 
@@ -229,7 +280,8 @@ if link_sheets:
                 res_aluno["SA"] = avaliar_teste(aluno.get("Senta e Alcança (cm)", 0), aluno['Idade'], aluno['Género'], "SA")
                 res_aluno["AGI"] = avaliar_teste(aluno.get("Agilidade (s)", 0), aluno['Idade'], aluno['Género'], "AGI")
                 
-                pdf_bytes = criar_pdf(aluno, res_aluno)
+                # Passamos a data e o nome do professor dinamicamente para cada PDF criado
+                pdf_bytes = criar_pdf(aluno, res_aluno, data_formatada, nome_prof)
                 nome_limpo = str(aluno['Nome']).replace(" ", "_")
                 lista_pdfs[f"Relatorio_{nome_limpo}.pdf"] = pdf_bytes
             
@@ -241,4 +293,4 @@ if link_sheets:
                 st.download_button(label=f"📥 {nome_arq}", data=dados_arq, file_name=nome_arq, mime='application/pdf')
                 
     except Exception as e:
-        st.error(f"Erro ao ler os dados. Confirma se o teu Google Sheets está publicado corretamente na web. Detalhe do erro: {e}")
+        st.error(f"Erro ao ler os dados. Detalhe do erro: {e}")
