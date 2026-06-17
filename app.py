@@ -88,18 +88,18 @@ def avaliar_teste(valor, idade, genero, teste):
     
     if teste in ["VEL", "AGI"]:
         if val <= pa:
-            return "PA", "Parabéns! Nível de elite atlética. Continua focado."
+            return "PA", "Parabéns! A tua aptidão física está excelente. Continua o bom trabalho!"
         elif val <= zs:
-            return "ZS", "Estás no bom caminho! Mantém a regularidade nos treinos."
+            return "ZS", "Estás no bom caminho! Mantém-te ativo."
         else:
-            return "AZS", "Precisas de melhorar. Foca no treino dinâmico de velocidade/coordenação."
+            return "AZS", "Precisas de melhorar. Concentra-te no treino de velocidade/coordenação."
     else:
         if val >= pa:
-            return "PA", "Parabéns! Nível de elite atlética. Continua focado."
+            return "PA", "Estás no bom caminho! Mantém-te ativo."
         elif val >= zs:
             return "ZS", "Estás no bom caminho! Mantém o teu condicionamento físico geral."
         else:
-            return "AZS", "Precisas de melhorar. Requer mais empenho e dedicação regular nas aulas."
+            return "AZS", "Precisas de melhorar. Procura ser mais empenhado nas aulas."
 
 def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf = PDF_Relatorio(nome_professor=nome_professor)
@@ -203,7 +203,7 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf.set_font("Arial", 'B', 10.5)
     pdf.cell(0, 6, "Recomendações Gerais do teu Professor:", ln=True)
     pdf.set_font("Arial", '', 9.5)
-    pdf.multi_cell(0, 5, "- Para zonas 'Abaixo da Zona Saudável': foca-te em treinar essa capacidade 2 a 3 vezes por semana (ex: corrida contínua para o Vaivém, ou pranchas/flexões controladas para a força).\n- Se estás na 'Zona Saudável' ou 'Perfil Atlético': Continua ativo na escola e nos treinos para manteres a tua excelente saúde funcional!")
+    pdf.multi_cell(0, 5, "- Para zonas 'Abaixo da Zona Saudável': Procura treinar essas capacidades, pelo menos, 2 a 3 vezes por semana (ex: corrida contínua para o Vaivém ou exercícios de força e flexibilidade para os restantes testes).\n- Se estás na 'Zona Saudável' ou 'Perfil Atlético': Continua ativo - na escola e fora dela - para manteres a tua excelente saúde funcional!")
     
     return pdf.output(dest='S').encode('latin-1')
 
@@ -216,7 +216,7 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
         msg['To'] = email_destino
         msg['Subject'] = f"FitEscola: O teu Relatório de Aptidão Física - {nome_aluno}"
         
-        corpo = f"Olá {nome_aluno},\n\nSegue, em anexo, o teu relatório individualizado com os resultados alcançados na bateria de testes do FitEscola, bem como algumas sugestões de melhoria.\n\nContinua com bom empenho nas nossas aulas!\n\nCumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
+        corpo = f"Olá {nome_aluno},\n\nSegue, em anexo, o teu relatório individualizado com os resultados alcançados na bateria de testes do FitEscola, bem como algumas sugestões de melhoria.\n\nContinua com bom empenho nas aulas!\n\nCumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
         msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
         
         part = MIMEBase('application', "octet-stream")
