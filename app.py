@@ -216,7 +216,7 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
         msg['To'] = email_destino
         msg['Subject'] = f"FitEscola: O teu Relatório de Aptidão Física - {nome_aluno}"
         
-        corpo = f"Olá {nome_aluno},\n\nViva! Segue, em anexo, o teu relatório individualizado com os resultados alcançados na bateria de testes do FitEscola, bem como algumas sugestões de melhoria.\n\nContinua com bom empenho nas nossas aulas!\n\nCumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
+        corpo = f"Olá {nome_aluno},\n\nSegue, em anexo, o teu relatório individualizado com os resultados alcançados na bateria de testes do FitEscola, bem como algumas sugestões de melhoria.\n\nContinua com bom empenho nas nossas aulas!\n\nCumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
         msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
         
         part = MIMEBase('application', "octet-stream")
