@@ -90,7 +90,7 @@ def avaliar_teste(valor, idade, genero, teste):
         if val <= pa:
             return "PA", "Parabéns! Nível de elite atlética. Continua focado."
         elif val <= zs:
-            return "ZS", "Estás no bom caminho! Mantém a regularidade nos teus treinos."
+            return "ZS", "Estás no bom caminho! Mantém a regularidade nos treinos."
         else:
             return "AZS", "Precisas de melhorar. Foca no treino dinâmico de velocidade/coordenação."
     else:
@@ -208,7 +208,6 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     return pdf.output(dest='S').encode('latin-1')
 
 def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
-    """Função interna para conexão SMTP e envio do e-mail com anexo."""
     try:
         cfg = st.secrets["email"]
         
@@ -226,7 +225,6 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
         part.add_header('Content-Disposition', f'attachment; filename="{nome_arquivo}"')
         msg.attach(part)
         
-        # Iniciar a conexão segura com o servidor
         server = smtplib.SMTP(cfg["smtp_server"], cfg["smtp_port"])
         server.starttls()
         server.login(cfg["remetente"], cfg["password"])
@@ -241,7 +239,7 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
 # 4. INTERFACE STREAMLIT
 # -------------------------------------------------------------------------
 st.title("🏋️‍♂️ EduTwin: Portal Interativo FitEscola")
-st.markdown("Ferramenta avançada para gestão de aptidão física escolar e envio automatizado.")
+st.markdown("Ferramenta avançada para gestão de aptidão física escolar.")
 
 st.sidebar.header("⚙️ Definições do Relatório")
 nome_prof = st.sidebar.text_input("Nome do Professor (Rodapé/E-mail):", value="O teu Nome Completo")
@@ -250,19 +248,23 @@ st.session_state['nome_prof_global'] = nome_prof
 data_escolhida = st.sidebar.date_input("Data de Realização dos Testes:", datetime.today())
 data_formatada = data_escolhida.strftime("%d/%m/%Y")
 
-# Validação prévia de credenciais dos Secrets
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔒 Estado do Servidor de E-mail")
 if "email" in st.secrets:
-    st.sidebar.success("✔️ Credenciais de e-mail configuradas nos Secrets.")
+    st.sidebar.success("✔️ Credenciais de e-mail ativas.")
 else:
-    st.sidebar.error("❌ Configura os 'Secrets' no painel do Streamlit para poderes enviar e-mails.")
+    st.sidebar.error("❌ Configura os 'Secrets' do e-mail no painel do Streamlit.")
 
 with st.expander("📌 Estrutura Obrigatória do Google Sheets"):
     st.write("O teu arquivo de dados deve conter exatamente estas colunas:")
     st.code("Nome, Idade, Género, Email, Vaivém (Percursos), Abdominais (Rep.), Flexões (Rep.), Imp. Horizontal (cm), Velocidade 40m (s), Senta e Alcança (cm), Agilidade (s)")
 
+# --- LOGICA DA OPÇÃO B DE AUTOMATIZAÇÃO DO LINK ---
+# O código tenta ler 'link_dados' gravado nos segredos. Se não houver, deixa vazio.
+link_gravado = st.secrets.get("link_dados", "")
+
 link_sheets = st.text_input("Insere aqui o link do teu Google Sheets (Publicado como CSV):", 
+                            value=link_gravado,
                             placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv")
 
 if link_sheets:
@@ -282,7 +284,6 @@ if link_sheets:
         
         col1, col2 = st.columns(2)
         
-        # Inicializar dicionário de relatórios na memória para reuso pelas duas ações
         if 'pack_pdfs' not in st.session_state:
             st.session_state['pack_pdfs'] = {}
             st.session_state['dados_prontos'] = False
@@ -305,7 +306,6 @@ if link_sheets:
                 pdf_bytes = criar_pdf(aluno, res_aluno, data_formatada, nome_prof)
                 nome_limpo = str(aluno['Nome']).replace(" ", "_")
                 
-                # Guardar em memória os binários, e-mail e nome original
                 st.session_state['pack_pdfs'][f"Relatorio_{nome_limpo}.pdf"] = {
                     "bytes": pdf_bytes,
                     "email": aluno['Email'],
@@ -325,7 +325,6 @@ if link_sheets:
                     total = len(st.session_state['pack_pdfs'])
                     
                     for i, (nome_arq, info) in enumerate(st.session_state['pack_pdfs'].items()):
-                        # Disparar e-mail individual
                         if disparar_email(info["email"], info["nome_aluno"], info["bytes"], nome_arq):
                             sucessos += 1
                         barra_progresso.progress((i + 1) / total)
@@ -333,10 +332,9 @@ if link_sheets:
                     if sucessos == total:
                         st.success(f"🚀 Excelente! Todos os {sucessos} e-mails foram enviados com sucesso!")
                     else:
-                        st.warning(f"Processo terminado: {sucessos} de {total} e-mails enviados com sucesso. Verifica a barra lateral para erros.")
+                        st.warning(f"Processo terminado: {sucessos} de {total} e-mails enviados com sucesso.")
 
-            # Mostrar a lista para descarregar manualmente se necessário
-            st.write("### ⬇️ Cópia de Segurança: Descarregar Manualmente")
+            st.write("### ⬇ Preservação de Dados: Descarregar Manualmente")
             for nome_arq, info in st.session_state['pack_pdfs'].items():
                 st.download_button(label=f"📥 {nome_arq}", data=info["bytes"], file_name=nome_arq, mime='application/pdf')
                 
