@@ -107,7 +107,7 @@ def avaliar_teste(valor, idade, genero, teste):
             return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
-    """Gera um gráfico horizontal limpo, com a cabeça do rapaz perfeitamente destacada."""
+    """Gera um gráfico horizontal limpo, usando um triângulo invertido para o tronco do rapaz."""
     fig, ax = plt.subplots(figsize=(4.5, 0.7))
     
     inverter = teste_sigla in ["VEL", "AGI"]
@@ -136,21 +136,21 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
     cor_aluno = '#e91e63' if is_fem else '#1e3a8a'     # Rosa / Azul Escuro
     cor_borda = '#ad1457' if is_fem else '#172554'
     
-    # 4. Desenho Anatómico Calibrado
+    # 4. Desenho Anatómico com Triângulos (Perfeição Visual)
     if is_fem:
-        # Rapariga: Corpo triangular + cabeça padrão
+        # Rapariga: Corpo triangular comum (base para baixo '^') + cabeça
         ax.scatter([val_aluno], [0.90], marker='^', s=130, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
         ax.scatter([val_aluno], [1.18], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     else:
-        # Rapaz: Corpo quadrado estável + cabeça subida de 1.25 para 1.32 para o encaixe perfeito
-        ax.scatter([val_aluno], [0.88], marker='s', s=85, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
-        ax.scatter([val_aluno], [1.32], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
+        # Rapaz: Tronco em "V" (triângulo invertido 'v') + cabeça perfeitamente alinhada no topo plano
+        ax.scatter([val_aluno], [0.98], marker='v', s=130, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
+        ax.scatter([val_aluno], [1.22], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     
-    # 5. Textos de Referência no topo (subidos ligeiramente para acompanhar o rapaz)
+    # 5. Textos de Referência no topo
     ax.text(zs, 1.75, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
     ax.text(pa, 1.75, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
 
-    # Ajuste dos limites verticais (teto expandido para 2.3)
+    # Ajuste estável dos limites verticais
     ax.set_ylim(0.4, 2.3)
     
     # Limpeza absoluta de eixos e bordas
