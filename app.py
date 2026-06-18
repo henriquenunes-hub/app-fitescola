@@ -269,3 +269,4 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf.multi_cell(0, 4.5, "A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde. Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas. Continua focado nos teus objetivos!")
     
     pdf_output = pdf.output(dest='S').encode('latin-1')
+
