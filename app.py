@@ -107,7 +107,7 @@ def avaliar_teste(valor, idade, genero, teste):
             return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
-    """Gera um gráfico horizontal estável com diferenciação clara de género e sem cortes."""
+    """Gera um gráfico horizontal limpo, sem o valor numérico e com o rapaz bem alinhado."""
     fig, ax = plt.subplots(figsize=(4.5, 0.7))
     
     inverter = teste_sigla in ["VEL", "AGI"]
@@ -129,35 +129,31 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
     ax.scatter([zs], [1.0], color='#3498db', s=50, zorder=2)
     ax.scatter([pa], [1.0], color='#2ecc71', s=50, zorder=2)
     
-    # 3. Identificação exata do género e definição de cores/formatos
-    # Tratamos variações como "F", "Feminino", "Rapariga", "M", "Masculino", "Rapaz"
+    # 3. Identificação exata do género
     gen_str = str(genero).strip().upper()
     is_fem = gen_str in ['F', 'FEMININO', 'RAPARIGA', 'FEM']
     
-    cor_aluno = '#e91e63' if is_fem else '#1e3a8a'     # Rosa para rapariga, Azul escuro para rapaz
+    cor_aluno = '#e91e63' if is_fem else '#1e3a8a'     # Rosa / Azul Escuro
     cor_borda = '#ad1457' if is_fem else '#172554'
     
-    # 4. Desenho Anatómico Seguro (Cabeça e Corpo na mesma coordenada x, ligeiramente desfasados em y)
+    # 4. Desenho Anatómico Corrigido (Ajuste milimétrico vertical)
     if is_fem:
-        # Rapariga: Base triangular larga (saia) + Cabeça circular no topo
+        # Rapariga: Corpo triangular baixo + cabeça padrão
         ax.scatter([val_aluno], [0.90], marker='^', s=130, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
         ax.scatter([val_aluno], [1.18], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     else:
-        # Rapaz: Ombros largos triangulares (v) ou Quadrado (s) + Cabeça circular no topo
-        ax.scatter([val_aluno], [0.92], marker='s', s=90, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
-        ax.scatter([val_aluno], [1.18], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
+        # Rapaz: Corpo quadrado ligeiramente mais baixo + cabeça subida para não sobrepor
+        ax.scatter([val_aluno], [0.88], marker='s', s=85, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
+        ax.scatter([val_aluno], [1.25], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     
-    # 5. Textos de Referência (Subidos para o topo da janela gráfica)
-    ax.text(zs, 1.65, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
-    ax.text(pa, 1.65, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
-    
-    # Valor numérico do aluno (Posicionado de forma limpa abaixo da linha)
-    ax.text(val_aluno, 0.35, f'{val_aluno}', color=cor_borda, fontsize=9, ha='center', weight='bold')
+    # 5. Textos de Referência no topo
+    ax.text(zs, 1.70, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
+    ax.text(pa, 1.70, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
 
-    # Alargamento do limite vertical para dar "respiro" à cabeça e às letras lá em cima
-    ax.set_ylim(0.0, 2.2)
+    # Ajuste dos limites para focar na linha e nos bonecos (sem espaço fantasma em baixo)
+    ax.set_ylim(0.4, 2.2)
     
-    # Limpeza de eixos
+    # Limpeza absoluta de eixos e bordas
     ax.get_yaxis().set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.spines['left'].set_visible(False)
