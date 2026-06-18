@@ -107,7 +107,7 @@ def avaliar_teste(valor, idade, genero, teste):
             return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
-    """Gera um gráfico horizontal estável com a silhueta perfeitamente montada."""
+    """Gera um gráfico horizontal estável com diferenciação clara de género e sem cortes."""
     fig, ax = plt.subplots(figsize=(4.5, 0.7))
     
     inverter = teste_sigla in ["VEL", "AGI"]
@@ -129,29 +129,35 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
     ax.scatter([zs], [1.0], color='#3498db', s=50, zorder=2)
     ax.scatter([pa], [1.0], color='#2ecc71', s=50, zorder=2)
     
-    is_fem = genero.upper() in ['F', 'FEMININO', 'RAPARIGA']
-    cor_aluno = '#e91e63' if is_fem else '#1e3a8a'
+    # 3. Identificação exata do género e definição de cores/formatos
+    # Tratamos variações como "F", "Feminino", "Rapariga", "M", "Masculino", "Rapaz"
+    gen_str = str(genero).strip().upper()
+    is_fem = gen_str in ['F', 'FEMININO', 'RAPARIGA', 'FEM']
+    
+    cor_aluno = '#e91e63' if is_fem else '#1e3a8a'     # Rosa para rapariga, Azul escuro para rapaz
     cor_borda = '#ad1457' if is_fem else '#172554'
     
-    # 3. Desenho Calibrado da Silhueta (Montagem sobreposta perfeita)
+    # 4. Desenho Anatómico Seguro (Cabeça e Corpo na mesma coordenada x, ligeiramente desfasados em y)
     if is_fem:
-        # Rapariga: Tronco triangular ajustado e cabeça logo acima
-        ax.scatter([val_aluno], [0.94], marker='v', s=140, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
-        ax.scatter([val_aluno], [1.14], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
+        # Rapariga: Base triangular larga (saia) + Cabeça circular no topo
+        ax.scatter([val_aluno], [0.90], marker='^', s=130, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
+        ax.scatter([val_aluno], [1.18], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     else:
-        # Rapaz: Tronco quadrado ajustado e cabeça logo acima
-        ax.scatter([val_aluno], [0.94], marker='s', s=100, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
-        ax.scatter([val_aluno], [1.14], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
+        # Rapaz: Ombros largos triangulares (v) ou Quadrado (s) + Cabeça circular no topo
+        ax.scatter([val_aluno], [0.92], marker='s', s=90, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
+        ax.scatter([val_aluno], [1.18], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     
-    # 4. Textos de Referência subidos para desimpedir o boneco (y=1.6)
-    ax.text(zs, 1.6, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
-    ax.text(pa, 1.6, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
+    # 5. Textos de Referência (Subidos para o topo da janela gráfica)
+    ax.text(zs, 1.65, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
+    ax.text(pa, 1.65, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
     
-    # Valor do aluno posicionado de forma limpa abaixo do gráfico (y=0.3)
-    ax.text(val_aluno, 0.3, f'{val_aluno}', color=cor_borda, fontsize=9, ha='center', weight='bold')
+    # Valor numérico do aluno (Posicionado de forma limpa abaixo da linha)
+    ax.text(val_aluno, 0.35, f'{val_aluno}', color=cor_borda, fontsize=9, ha='center', weight='bold')
 
-    # Limpeza de eixos e limites verticais estáveis para evitar distorção
-    ax.set_ylim(0.1, 2.0)
+    # Alargamento do limite vertical para dar "respiro" à cabeça e às letras lá em cima
+    ax.set_ylim(0.0, 2.2)
+    
+    # Limpeza de eixos
     ax.get_yaxis().set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.spines['left'].set_visible(False)
@@ -164,6 +170,7 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
     plt.savefig(filename, dpi=160, transparent=True)
     plt.close(fig)
     return filename
+    
 def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf = PDF_Relatorio(nome_professor=nome_professor, orientation='L', unit='mm', format='A4')
     pdf.add_page()
