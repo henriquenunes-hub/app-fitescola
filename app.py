@@ -17,6 +17,26 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # -------------------------------------------------------------------------
+# CARREGAMENTO DINÂMICO DE FEEDBACKS PEDAGÓGICOS
+# -------------------------------------------------------------------------
+@st.cache_data
+def carregar_feedbacks_pedagogicos():
+    """Lê o ficheiro CSV do GitHub e cria um dicionário de consulta rápida."""
+    ficheiro_csv = "feedbacks.csv"
+    if os.path.exists(ficheiro_csv):
+        try:
+            # Lê o CSV garantindo que remove espaços em branco nos nomes dos testes
+            df = pd.read_csv(ficheiro_csv)
+            df['Teste'] = df['Teste'].str.strip()
+            return df.set_index("Teste").to_dict(orient="index")
+        except Exception as e:
+            st.error(f"Erro ao carregar o ficheiro de feedbacks: {e}")
+    return {}
+
+# Inicializa o dicionário global de feedbacks dinâmicos
+feedbacks_csv = carregar_feedbacks_pedagogicos()
+
+# -------------------------------------------------------------------------
 # 1. BASE DE DADOS INTERNA (TABELAS FITESCOLA)
 # -------------------------------------------------------------------------
 dados_fem = {
