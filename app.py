@@ -70,7 +70,6 @@ class PDF_Relatorio(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(127, 140, 141)
-        # Linha estendida para o formato horizontal (287mm de largura útil)
         self.line(10, self.get_y() - 2, 287, self.get_y() - 2)
         texto_rodape = f"Relatório gerado por EduTwin | Professor Responsável: {self.nome_professor}"
         self.cell(0, 10, texto_rodape, 0, 0, 'L')
@@ -107,48 +106,72 @@ def avaliar_teste(valor, idade, genero, teste):
         else:
             return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
 
-def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla):
-    """Gera um gráfico de linha horizontal minimalista e salva como imagem temporária."""
-    fig, ax = plt.subplots(figsize=(4.5, 0.6))
+def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
+    """Gera um gráfico de linha horizontal minimalista com um ícone humano estilizado."""
+    fig, ax = plt.subplots(figsize=(4.5, 0.7))
     
-    # Definir limites de forma inteligente conforme o tipo de teste
     inverter = teste_sigla in ["VEL", "AGI"]
     
     if inverter:
-        # Menor valor é melhor
         valores_eixo = [pa, zs, val_aluno]
         min_x = min(valores_eixo) * 0.85
         max_x = max(valores_eixo) * 1.15
-        ax.set_xlim(max_x, min_x) # Inverte o eixo visualmente
+        ax.set_xlim(max_x, min_x)
     else:
-        # Maior valor é melhor
         valores_eixo = [zs, pa, val_aluno]
         min_x = min(valores_eixo) * 0.7 if min(valores_eixo) > 0 else 0
         max_x = max(valores_eixo) * 1.2
         ax.set_xlim(min_x, max_x)
 
-    # Desenhar a linha base cinzenta
-    ax.axhline(y=1, color='#bdc3c7', linewidth=3, zorder=1)
+    # Linha base cinzenta limpa
+    ax.axhline(y=1, color='#e2e8f0', linewidth=4, zorder=1)
     
-    # Marcar as zonas de referência com pontos estruturados
-    ax.scatter([zs], [1], color='#3498db', s=90, label='Z. Saudável', zorder=2)
-    ax.scatter([pa], [1], color='#2ecc71', s=90, label='P. Atlético', zorder=2)
+    # Marcadores de Referência Normativa Estáveis
+    ax.scatter([zs], [1], color='#3498db', s=60, zorder=2)
+    ax.scatter([pa], [1], color='#2ecc71', s=60, zorder=2)
     
-    # Destacar o resultado do aluno com uma grande estrela dourada
-    ax.scatter([val_aluno], [1], color='#f1c40f', edgecolor='#d35400', s=180, marker='*', label='Tu', zorder=3)
+    # Definição do Ícone Humano Estilizado (Marcador customizado via Matplotlib Path)
+    # Criamos o caminho de uma silhueta: círculo para cabeça e arco para ombros
+    is_fem = genero.upper() in ['F', 'FEMININO', 'RAPARIGA']
     
-    # Adicionar textos explicativos simples sobre os pontos
-    ax.text(zs, 1.25, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
-    ax.text(pa, 1.25, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
-    ax.text(val_aluno, 0.65, f'{val_aluno}', color='#d35400', fontsize=9, ha='center', weight='bold')
+    # Cores baseadas no género
+    cor_aluno = '#e91e63' if is_fem else '#1e3a8a'
+    cor_borda = '#ad1457' if is_fem else '#172554'
+    
+    if is_fem:
+        # Silhueta estilizada feminina (com ligeiro formato de saia/triângulo no tronco)
+        verts = [
+            (0.0, 0.4), (0.2, 0.4), (0.2, 0.6), (0.0, 0.6), (-0.2, 0.6), (-0.2, 0.4), (0.0, 0.4), # Cabeça
+            (0.0, 0.2), # Pescoço
+            (-0.4, -0.4), (0.4, -0.4), (0.0, 0.2) # Tronco / Saia triangular
+        ]
+        codes = [1, 4, 4, 4, 4, 4, 5, 1, 1, 4, 5]
+    else:
+        # Silhueta estilizada masculina (ombros retos e tronco retangular/firme)
+        verts = [
+            (0.0, 0.4), (0.2, 0.4), (0.2, 0.6), (0.0, 0.6), (-0.2, 0.6), (-0.2, 0.4), (0.0, 0.4), # Cabeça
+            (0.0, 0.2), # Pescoço
+            (-0.3, 0.1), (0.3, 0.1), (0.2, -0.4), (-0.2, -0.4), (-0.3, 0.1) # Ombros e Tronco
+        ]
+        codes = [1, 4, 4, 4, 4, 4, 5, 1, 1, 4, 4, 4, 5]
+        
+    custom_marker = matplotlib.path.Path(verts, codes)
+    
+    # Desenhar o ícone do aluno no ponto exato
+    ax.scatter([val_aluno], [1], marker=custom_marker, s=320, color=cor_aluno, edgecolor=cor_borda, linewidth=1, zorder=3)
+    
+    # Textos explicativos
+    ax.text(zs, 1.35, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
+    ax.text(pa, 1.35, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
+    ax.text(val_aluno, 0.45, f'{val_aluno}', color=cor_borda, fontsize=9, ha='center', weight='bold')
 
-    # Limpeza total de bordas e eixos para design minimalista
+    # Limpeza total de bordas
     ax.get_yaxis().set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_color('#eceff1')
-    ax.tick_params(axis='x', colors='#7f8c8d', labelsize=7)
+    ax.tick_params(axis='x', colors='#94a3b8', labelsize=7)
     
     plt.tight_layout()
     filename = f"temp_chart_{teste_sigla}_{val_aluno}.png"
@@ -157,36 +180,32 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla):
     return filename
 
 def criar_pdf(aluno, resultados, data_teste, nome_professor):
-    # Configurar para Modo Paisagem ("L" - Landscape)
     pdf = PDF_Relatorio(nome_professor=nome_professor, orientation='L', unit='mm', format='A4')
     pdf.add_page()
     
     # --- CABEÇALHO CLEAN (Sem barra azul) ---
     pdf.set_y(10)
-    # Logótipo da Escola à Esquerda
     if os.path.exists("logo_escola.png"):
         pdf.image("logo_escola.png", x=10, y=10, h=15)
-    # Logótipo do FitEscola à Direita
     if os.path.exists("logo_fitescola.png"):
         pdf.image("logo_fitescola.png", x=257, y=10, h=15)
         
-    # Títulos textuais em tom escuro corporativo
-    pdf.set_text_color(44, 62, 80)
+    pdf.set_text_color(30, 41, 59)
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(0, 7, "RELATÓRIO DE APTIDÃO FÍSICA INDIVIDUAL", ln=True, align='C')
     pdf.set_font("Arial", 'I', 11)
-    pdf.set_text_color(127, 140, 141)
-    pdf.cell(0, 6, "Avaliação de Parâmetros Motores e Funcionais | Programa FitEscola", ln=True, align='C')
+    pdf.set_text_color(100, 116, 139)
+    pdf.cell(0, 6, "Avaliação de Parâmetros Motores e Funcionais | Bateria FitEscola", ln=True, align='C')
     pdf.ln(8)
     
-    # Bloco de Identificação do Aluno (Largura total adaptada de 277mm)
+    # Identificação
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(160, 6, f"Nome do Aluno: {aluno['Nome']}", ln=False)
     pdf.set_text_color(41, 128, 185)
     pdf.cell(117, 6, f"Data da Avaliação: {data_teste}", ln=True, align='R')
     
-    pdf.set_text_color(50, 50, 50)
+    pdf.set_text_color(71, 85, 105)
     pdf.set_font("Arial", '', 10)
     pdf.cell(60, 6, f"Idade: {aluno['Idade']} anos", ln=False)
     pdf.cell(60, 6, f"Género: {aluno['Género']}", ln=False)
@@ -195,15 +214,14 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf.line(10, pdf.get_y(), 287, pdf.get_y())
     pdf.ln(4)
     
-    # --- TABELA DIMENSIONADA PARA LARGURA HORIZONTAL (Total = 277mm) ---
+    # Dimensões da Tabela Horizontal (Total: 277mm)
     w_teste = 42
     w_resultado = 20
     w_classif = 38
     w_grafico = 62
     w_feedback = 115
     
-    # Cabeçalhos da Tabela
-    pdf.set_fill_color(245, 247, 250)
+    pdf.set_fill_color(248, 250, 252)
     pdf.set_font("Arial", 'B', 9.5)
     pdf.cell(w_teste, 8, "Teste Efetuado", 1, 0, 'C', fill=True)
     pdf.cell(w_resultado, 8, "Resultado", 1, 0, 'C', fill=True)
@@ -233,54 +251,48 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
             else:
                 txt_classe = "Abaixo Zona Saudável"
             
-            # Altura Dinâmica baseada no tamanho do feedback textual
             linhas_necessarias = len(pdf.multi_cell(w_feedback, 4.5, fb, split_only=True))
-            altura_linha = max(13, linhas_necessarias * 4.5) # Mínimo 13mm para acomodar bem o gráfico
+            altura_linha = max(14, linhas_necessarias * 4.5)
             
             x_atual = pdf.get_x()
             y_atual = pdf.get_y()
             
-            # Células iniciais estáveis
             pdf.cell(w_teste, altura_linha, nome_exibicao, 1, 0, 'L')
             pdf.cell(w_resultado, altura_linha, str(res_aluno), 1, 0, 'C')
             
-            # Colorir texto da classificação
             if classe == "PA":
-                pdf.set_text_color(39, 174, 96)
+                pdf.set_text_color(34, 197, 94)
             elif classe == "ZS":
-                pdf.set_text_color(41, 128, 185)
+                pdf.set_text_color(59, 130, 246)
             else:
-                pdf.set_text_color(192, 41, 43)
+                pdf.set_text_color(239, 68, 68)
             pdf.cell(w_classif, altura_linha, txt_classe, 1, 0, 'C')
             pdf.set_text_color(0, 0, 0)
             
-            # --- COLUNA DO GRÁFICO ---
-            # Cria moldura em branco para receber a imagem por cima
+            # Gerar e Injetar Gráfico com o Boneco Customizado
             pdf.cell(w_grafico, altura_linha, "", 1, 0)
             if classe != "N/A":
-                img_path = gerar_grafico_linha(val, zs, pa, sigla)
+                img_path = gerar_grafico_linha(val, zs, pa, sigla, aluno['Género'])
                 arquivos_deletar.append(img_path)
-                # Injeta a imagem exatamente centralizada na célula
-                pdf.image(img_path, x=x_atual + w_teste + w_resultado + w_classif + 1, y=y_atual + 1.5, w=w_grafico - 2, h=altura_linha - 3)
+                pdf.image(img_path, x=x_atual + w_teste + w_resultado + w_classif + 1, y=y_atual + 1, w=w_grafico - 2, h=altura_linha - 2)
             
-            # --- COLUNA DO FEEDBACK ---
+            # Feedback
             pdf.set_xy(x_atual + w_teste + w_resultado + w_classif + w_grafico, y_atual)
             pdf.multi_cell(w_feedback, altura_linha / linhas_necessarias, fb, 1, 'L')
             pdf.set_xy(x_atual, y_atual + altura_linha)
             
     pdf.ln(5)
     
-    # Recomendações finais horizontais
-    pdf.set_fill_color(248, 249, 250)
-    pdf.rect(10, pdf.get_y(), 277, 20, 'F')
+    # Orientações finais
+    pdf.set_fill_color(248, 250, 252)
+    pdf.rect(10, pdf.get_y(), 277, 18, 'F')
     pdf.set_font("Arial", 'B', 9.5)
     pdf.cell(0, 5, "Orientações de Desenvolvimento Desportivo:", ln=True)
     pdf.set_font("Arial", '', 9)
-    pdf.multi_cell(0, 4.5, "Os resultados assinalados com (*) identificam a tua posição atual perante a escala nacional. Lembra-te de que a condição física é dinâmica: o treino estruturado focado nas tuas áreas 'Abaixo da Zona Saudável' irá restabelecer o teu equilíbrio muscular e motor. Continua focado!")
+    pdf.multi_cell(0, 4.5, "A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde. Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas. Continua focado nos teus objetivos!")
     
     pdf_output = pdf.output(dest='S').encode('latin-1')
     
-    # Limpeza dos gráficos temporários criados em disco
     for f in arquivos_deletar:
         if os.path.exists(f):
             os.remove(f)
@@ -293,9 +305,9 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
         msg = MIMEMultipart()
         msg['From'] = cfg["remetente"]
         msg['To'] = email_destino
-        msg['Subject'] = f"FitEscola: Relatório Individualizado de Condição Física - {nome_aluno}"
+        msg['Subject'] = f"FitEscola: Novo Relatório Analítico de Condição Física - {nome_aluno}"
         
-        corpo = f"Olá {nome_aluno},\n\nJunto enviamos em anexo o teu novo relatório analítico do FitEscola, agora atualizado com gráficos horizontais de posicionamento e orientações pedagógicas exclusivas.\n\nBons treinos!\n\nCom os melhores cumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
+        corpo = f"Olá {nome_aluno},\n\nJunto enviamos em anexo o teu novo relatório de aptidão física do FitEscola, com uma linha visual interativa contendo o teu ícone de perfil e feedbacks pedagógicos detalhados.\n\nBons treinos!\n\nCom os melhores cumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
         msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
         
         part = MIMEBase('application', "octet-stream")
@@ -318,7 +330,7 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
 # 4. INTERFACE STREAMLIT
 # -------------------------------------------------------------------------
 st.title("🏋️‍♂️ EduTwin: Portal Interativo FitEscola")
-st.markdown("Plataforma avançada com gráficos analíticos horizontais integrados.")
+st.markdown("Relatórios de alto nível pedagógico em formato de Paisagem com ícones de perfil.")
 
 st.sidebar.header("⚙️ Definições do Relatório")
 nome_prof = st.sidebar.text_input("Nome do Professor (Rodapé/E-mail):", value="O teu Nome Completo")
@@ -362,7 +374,7 @@ if link_sheets:
 
         if col1.button("🔄 1. Analisar Dados & Gerar Relatórios"):
             st.session_state['pack_pdfs'] = {}
-            with st.spinner("A desenhar gráficos personalizados e a formatar PDFs..."):
+            with st.spinner("A modelar silhuetas e a exportar PDFs pedagógicos..."):
                 for index, aluno in df_alunos.iterrows():
                     if pd.isna(aluno['Nome']):
                         continue
@@ -384,9 +396,10 @@ if link_sheets:
                         "email": aluno['Email'],
                         "nome_aluno": aluno['Nome']
                     }
+            st.session_state['dados_prready'] = True
             st.session_state['dados_prontos'] = True
             st.balloons()
-            st.success(f"Sucesso! {len(st.session_state['pack_pdfs'])} relatórios gráficos criados.")
+            st.success(f"Sucesso! {len(st.session_state['pack_pdfs'])} relatórios gráficos com silhuetas criados.")
 
         if st.session_state['dados_prontos']:
             if col2.button("📧 2. Disparar E-mails Automatizados"):
