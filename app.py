@@ -262,7 +262,8 @@ with st.expander("📌 Estrutura Obrigatória do Google Sheets"):
 # --- LOGICA DA OPÇÃO B DE AUTOMATIZAÇÃO DO LINK ---
 # O código tenta ler 'link_dados' gravado nos segredos. Se não houver, deixa vazio.
 link_gravado = st.secrets.get("link_dados", "")
-
+# Linha temporária para teste:
+st.write("O link detetado nos Secrets é:", st.secrets.get("link_dados", "NÃO ENCONTRADO"))
 link_sheets = st.text_input("Insere aqui o link do teu Google Sheets (Publicado como CSV):", 
                             value=link_gravado,
                             placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv")
