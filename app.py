@@ -21,19 +21,25 @@ import matplotlib.pyplot as plt
 # -------------------------------------------------------------------------
 @st.cache_data
 def carregar_feedbacks_pedagogicos():
-    """Lê o ficheiro CSV do GitHub e cria um dicionário de consulta rápida."""
+    """Lê o ficheiro CSV de forma robusta (suporta vários encodings e separadores do Excel)."""
     ficheiro_csv = "feedbacks.csv"
-    if os.path.exists(ficheiro_csv):
-        try:
-            # Lê o CSV garantindo que remove espaços em branco nos nomes dos testes
-            df = pd.read_csv(ficheiro_csv)
-            df['Teste'] = df['Teste'].str.strip()
-            return df.set_index("Teste").to_dict(orient="index")
-        except Exception as e:
-            st.error(f"Erro ao carregar o ficheiro de feedbacks: {e}")
+    if not os.path.exists(ficheiro_csv):
+        return {}
+    
+    # Tenta combinações de encodings e separadores comuns (Excel PT usa ';')
+    for encoding in ['utf-8-sig', 'latin-1', 'utf-8', 'cp1252']:
+        for sep in [';', ',']:
+            try:
+                df = pd.read_csv(ficheiro_csv, sep=sep, encoding=encoding)
+                if 'Teste' in df.columns:
+                    # Remove espaços e força tudo para minúsculas para garantir o emparelhamento
+                    df['Teste_Limpo'] = df['Teste'].astype(str).str.strip().str.lower()
+                    return df.set_index("Teste_Limpo").to_dict(orient="index")
+            except:
+                continue
     return {}
 
-# Inicializa o dicionário global de feedbacks dinâmicos
+# Inicializa o dicionário global
 feedbacks_csv = carregar_feedbacks_pedagogicos()
 
 # -------------------------------------------------------------------------
@@ -111,7 +117,7 @@ def avaliar_teste(valor, idade, genero, teste):
     zs = linha[f"{teste}_ZS"]
     pa = linha[f"{teste}_PA"]
     
-    # 1. Determina o nível alcançado (Classe)
+    # Determina o nível alcançado (Classe)
     if teste in ["VEL", "AGI"]:
         if val <= pa:
             classe = "PA"
@@ -126,6 +132,31 @@ def avaliar_teste(valor, idade, genero, teste):
             classe = "ZS"
         else:
             classe = "AZS"
+
+    # MAPA DE CORRESPONDÊNCIA AJUSTADO AO TEU CSV
+    mapa_nomes_csv = {
+        "VV": "vaivém",
+        "ABD": "abdominais",
+        "FLX": "flexões de braços",
+        "IMP": "impulslão horizontal", # Mapeado com a gralha exata do CSV para funcionar
+        "VEL": "velocidade 40m",
+        "SA": "flexibilidade mmii",
+        "AGI": "agilidade"
+    }
+    
+    nome_no_csv = mapa_nomes_csv.get(teste, "").lower().strip()
+    
+    # Procura o texto personalizado no dicionário do CSV
+    fb_texto = "Sem orientação pedagógica registada."
+    
+    if nome_no_csv in feedbacks_csv:
+        if classe in feedbacks_csv[nome_no_csv]:
+            # Extrai o texto da célula correspondente (AZS, ZS ou PA)
+            fb_texto = str(feedbacks_csv[nome_no_csv][classe]).strip()
+    elif teste == "AGI":
+        fb_texto = "Parâmetro de Agilidade. (Linha em falta no ficheiro CSV)."
+            
+    return classe, fb_texto, val, zs, pa
 
     # 2. Mapeamento da sigla interna da App para o nome exato da linha do teu CSV
     mapa_nomes_csv = {
