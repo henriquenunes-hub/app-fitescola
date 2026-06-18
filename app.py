@@ -59,7 +59,7 @@ ref_fem = pd.DataFrame(dados_fem)
 ref_masc = pd.DataFrame(dados_masc)
 
 # -------------------------------------------------------------------------
-# 2. SUBCLASSE DO FPDF (RODAPÉ ADAPTADO PARA HORIZONTAL - 297mm)
+# 2. SUBCLASSE DO FPDF
 # -------------------------------------------------------------------------
 class PDF_Relatorio(FPDF):
     def __init__(self, nome_professor, *args, **kwargs):
@@ -107,11 +107,10 @@ def avaliar_teste(valor, idade, genero, teste):
             return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
-    """Gera um gráfico de linha horizontal minimalista com um ícone humano estilizado."""
+    """Gera um gráfico horizontal estável usando marcadores nativos para o boneco."""
     fig, ax = plt.subplots(figsize=(4.5, 0.7))
     
     inverter = teste_sigla in ["VEL", "AGI"]
-    
     if inverter:
         valores_eixo = [pa, zs, val_aluno]
         min_x = min(valores_eixo) * 0.85
@@ -123,49 +122,33 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
         max_x = max(valores_eixo) * 1.2
         ax.set_xlim(min_x, max_x)
 
-    # Linha base cinzenta limpa
+    # Linha base
     ax.axhline(y=1, color='#e2e8f0', linewidth=4, zorder=1)
     
-    # Marcadores de Referência Normativa Estáveis
+    # Referências Normativas
     ax.scatter([zs], [1], color='#3498db', s=60, zorder=2)
     ax.scatter([pa], [1], color='#2ecc71', s=60, zorder=2)
     
-    # Definição do Ícone Humano Estilizado (Marcador customizado via Matplotlib Path)
-    # Criamos o caminho de uma silhueta: círculo para cabeça e arco para ombros
     is_fem = genero.upper() in ['F', 'FEMININO', 'RAPARIGA']
-    
-    # Cores baseadas no género
     cor_aluno = '#e91e63' if is_fem else '#1e3a8a'
     cor_borda = '#ad1457' if is_fem else '#172554'
     
+    # DESENHO SEGURO DO BONECO COM MARCADORES NATIVOS DO MATPLOTLIB
     if is_fem:
-        # Silhueta estilizada feminina (com ligeiro formato de saia/triângulo no tronco)
-        verts = [
-            (0.0, 0.4), (0.2, 0.4), (0.2, 0.6), (0.0, 0.6), (-0.2, 0.6), (-0.2, 0.4), (0.0, 0.4), # Cabeça
-            (0.0, 0.2), # Pescoço
-            (-0.4, -0.4), (0.4, -0.4), (0.0, 0.2) # Tronco / Saia triangular
-        ]
-        codes = [1, 4, 4, 4, 4, 4, 5, 1, 1, 4, 5]
+        # Rapariga: Corpo triangular (marcador 'v') e Cabeça por cima (marcador 'o')
+        ax.scatter([val_aluno], [0.93], marker='v', s=150, color=cor_aluno, edgecolor=cor_borda, zorder=3)
+        ax.scatter([val_aluno], [1.07], marker='o', s=60, color=cor_aluno, edgecolor=cor_borda, zorder=4)
     else:
-        # Silhueta estilizada masculina (ombros retos e tronco retangular/firme)
-        verts = [
-            (0.0, 0.4), (0.2, 0.4), (0.2, 0.6), (0.0, 0.6), (-0.2, 0.6), (-0.2, 0.4), (0.0, 0.4), # Cabeça
-            (0.0, 0.2), # Pescoço
-            (-0.3, 0.1), (0.3, 0.1), (0.2, -0.4), (-0.2, -0.4), (-0.3, 0.1) # Ombros e Tronco
-        ]
-        codes = [1, 4, 4, 4, 4, 4, 5, 1, 1, 4, 4, 4, 5]
-        
-    custom_marker = matplotlib.path.Path(verts, codes)
+        # Rapaz: Corpo quadrado/ombros largos (marcador 's') e Cabeça por cima (marcador 'o')
+        ax.scatter([val_aluno], [0.93], marker='s', s=110, color=cor_aluno, edgecolor=cor_borda, zorder=3)
+        ax.scatter([val_aluno], [1.07], marker='o', s=60, color=cor_aluno, edgecolor=cor_borda, zorder=4)
     
-    # Desenhar o ícone do aluno no ponto exato
-    ax.scatter([val_aluno], [1], marker=custom_marker, s=320, color=cor_aluno, edgecolor=cor_borda, linewidth=1, zorder=3)
-    
-    # Textos explicativos
-    ax.text(zs, 1.35, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
-    ax.text(pa, 1.35, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
-    ax.text(val_aluno, 0.45, f'{val_aluno}', color=cor_borda, fontsize=9, ha='center', weight='bold')
+    # Textos informativos
+    ax.text(zs, 1.4, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
+    ax.text(pa, 1.4, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
+    ax.text(val_aluno, 0.4, f'{val_aluno}', color=cor_borda, fontsize=9, ha='center', weight='bold')
 
-    # Limpeza total de bordas
+    # Limpeza visual do eixo
     ax.get_yaxis().set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.spines['left'].set_visible(False)
@@ -183,7 +166,6 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf = PDF_Relatorio(nome_professor=nome_professor, orientation='L', unit='mm', format='A4')
     pdf.add_page()
     
-    # --- CABEÇALHO CLEAN (Sem barra azul) ---
     pdf.set_y(10)
     if os.path.exists("logo_escola.png"):
         pdf.image("logo_escola.png", x=10, y=10, h=15)
@@ -198,7 +180,6 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf.cell(0, 6, "Avaliação de Parâmetros Motores e Funcionais | Bateria FitEscola", ln=True, align='C')
     pdf.ln(8)
     
-    # Identificação
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(160, 6, f"Nome do Aluno: {aluno['Nome']}", ln=False)
@@ -214,7 +195,6 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf.line(10, pdf.get_y(), 287, pdf.get_y())
     pdf.ln(4)
     
-    # Dimensões da Tabela Horizontal (Total: 277mm)
     w_teste = 42
     w_resultado = 20
     w_classif = 38
@@ -269,21 +249,18 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
             pdf.cell(w_classif, altura_linha, txt_classe, 1, 0, 'C')
             pdf.set_text_color(0, 0, 0)
             
-            # Gerar e Injetar Gráfico com o Boneco Customizado
             pdf.cell(w_grafico, altura_linha, "", 1, 0)
             if classe != "N/A":
                 img_path = gerar_grafico_linha(val, zs, pa, sigla, aluno['Género'])
                 arquivos_deletar.append(img_path)
                 pdf.image(img_path, x=x_atual + w_teste + w_resultado + w_classif + 1, y=y_atual + 1, w=w_grafico - 2, h=altura_linha - 2)
             
-            # Feedback
             pdf.set_xy(x_atual + w_teste + w_resultado + w_classif + w_grafico, y_atual)
             pdf.multi_cell(w_feedback, altura_linha / linhas_necessarias, fb, 1, 'L')
             pdf.set_xy(x_atual, y_atual + altura_linha)
             
     pdf.ln(5)
     
-    # Orientações finais
     pdf.set_fill_color(248, 250, 252)
     pdf.rect(10, pdf.get_y(), 277, 18, 'F')
     pdf.set_font("Arial", 'B', 9.5)
@@ -292,134 +269,3 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
     pdf.multi_cell(0, 4.5, "A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde. Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas. Continua focado nos teus objetivos!")
     
     pdf_output = pdf.output(dest='S').encode('latin-1')
-    
-    for f in arquivos_deletar:
-        if os.path.exists(f):
-            os.remove(f)
-            
-    return pdf_output
-
-def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
-    try:
-        cfg = st.secrets["email"]
-        msg = MIMEMultipart()
-        msg['From'] = cfg["remetente"]
-        msg['To'] = email_destino
-        msg['Subject'] = f"FitEscola: Novo Relatório Analítico de Condição Física - {nome_aluno}"
-        
-        corpo = f"Olá {nome_aluno},\n\nJunto enviamos em anexo o teu novo relatório de aptidão física do FitEscola, com uma linha visual interativa contendo o teu ícone de perfil e feedbacks pedagógicos detalhados.\n\nBons treinos!\n\nCom os melhores cumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
-        msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
-        
-        part = MIMEBase('application', "octet-stream")
-        part.set_payload(pdf_conteudo)
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="{nome_arquivo}"')
-        msg.attach(part)
-        
-        server = smtplib.SMTP(cfg["smtp_server"], cfg["smtp_port"])
-        server.starttls()
-        server.login(cfg["remetente"], cfg["password"])
-        server.sendmail(cfg["remetente"], email_destino, msg.as_string())
-        server.quit()
-        return True
-    except Exception as e:
-        st.sidebar.error(f"Erro no envio para {email_destino}: {e}")
-        return False
-
-# -------------------------------------------------------------------------
-# 4. INTERFACE STREAMLIT
-# -------------------------------------------------------------------------
-st.title("🏋️‍♂️ EduTwin: Portal Interativo FitEscola")
-st.markdown("Relatórios de alto nível pedagógico em formato de Paisagem com ícones de perfil.")
-
-st.sidebar.header("⚙️ Definições do Relatório")
-nome_prof = st.sidebar.text_input("Nome do Professor (Rodapé/E-mail):", value="O teu Nome Completo")
-st.session_state['nome_prof_global'] = nome_prof
-
-data_escolhida = st.sidebar.date_input("Data de Realização dos Testes:", datetime.today())
-data_formatada = data_escolhida.strftime("%d/%m/%Y")
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("🔒 Estado do Servidor")
-if "email" in st.secrets:
-    st.sidebar.success("✔️ Servidor de E-mail Conectado.")
-else:
-    st.sidebar.error("❌ Configura os Secrets de e-mail.")
-
-link_gravado = st.secrets.get("dados", {}).get("link_dados", "")
-
-link_sheets = st.text_input("Link do Google Sheets detetado automaticamente:", 
-                            value=link_gravado,
-                            placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv")
-
-if link_sheets:
-    try:
-        if "edit?usp=sharing" in link_sheets:
-            link_csv = link_sheets.replace("edit?usp=sharing", "export?format=csv")
-        elif "pubhtml" in link_sheets:
-            link_csv = link_sheets.replace("pubhtml", "pub?output=csv")
-        else:
-            link_csv = link_sheets
-            
-        df_alunos = pd.read_csv(link_csv)
-        st.success("🎉 Base de dados integrada e sincronizada!")
-        st.dataframe(df_alunos)
-        
-        st.subheader("📊 Processamento e Ações em Massa")
-        col1, col2 = st.columns(2)
-        
-        if 'pack_pdfs' not in st.session_state:
-            st.session_state['pack_pdfs'] = {}
-            st.session_state['dados_prontos'] = False
-
-        if col1.button("🔄 1. Analisar Dados & Gerar Relatórios"):
-            st.session_state['pack_pdfs'] = {}
-            with st.spinner("A modelar silhuetas e a exportar PDFs pedagógicos..."):
-                for index, aluno in df_alunos.iterrows():
-                    if pd.isna(aluno['Nome']):
-                        continue
-                        
-                    res_aluno = {}
-                    res_aluno["VV"] = avaliar_teste(aluno.get("Vaivém (Percursos)", 0), aluno['Idade'], aluno['Género'], "VV")
-                    res_aluno["ABD"] = avaliar_teste(aluno.get("Abdominais (Rep.)", 0), aluno['Idade'], aluno['Género'], "ABD")
-                    res_aluno["FLX"] = avaliar_teste(aluno.get("Flexões (Rep.)", 0), aluno['Idade'], aluno['Género'], "FLX")
-                    res_aluno["IMP"] = avaliar_teste(aluno.get("Imp. Horizontal (cm)", 0), aluno['Idade'], aluno['Género'], "IMP")
-                    res_aluno["VEL"] = avaliar_teste(aluno.get("Velocidade 40m (s)", 0), aluno['Idade'], aluno['Género'], "VEL")
-                    res_aluno["SA"] = avaliar_teste(aluno.get("Senta e Alcança (cm)", 0), aluno['Idade'], aluno['Género'], "SA")
-                    res_aluno["AGI"] = avaliar_teste(aluno.get("Agilidade (s)", 0), aluno['Idade'], aluno['Género'], "AGI")
-                    
-                    pdf_bytes = criar_pdf(aluno, res_aluno, data_formatada, nome_prof)
-                    nome_limpo = str(aluno['Nome']).replace(" ", "_")
-                    
-                    st.session_state['pack_pdfs'][f"Relatorio_{nome_limpo}.pdf"] = {
-                        "bytes": pdf_bytes,
-                        "email": aluno['Email'],
-                        "nome_aluno": aluno['Nome']
-                    }
-            st.session_state['dados_prready'] = True
-            st.session_state['dados_prontos'] = True
-            st.balloons()
-            st.success(f"Sucesso! {len(st.session_state['pack_pdfs'])} relatórios gráficos com silhuetas criados.")
-
-        if st.session_state['dados_prontos']:
-            if col2.button("📧 2. Disparar E-mails Automatizados"):
-                if "email" not in st.secrets:
-                    st.error("Credenciais em falta.")
-                else:
-                    sucessos = 0
-                    barra_progresso = st.progress(0)
-                    total = len(st.session_state['pack_pdfs'])
-                    
-                    for i, (nome_arq, info) in enumerate(st.session_state['pack_pdfs'].items()):
-                        if disparar_email(info["email"], info["nome_aluno"], info["bytes"], nome_arq):
-                            sucessos += 1
-                        barra_progresso.progress((i + 1) / total)
-                    
-                    st.success(f"🚀 Concluído! {sucessos} e-mails enviados.")
-
-            st.write("### ⬇ Cópia de Segurança Local")
-            for nome_arq, info in st.session_state['pack_pdfs'].items():
-                st.download_button(label=f"📥 {nome_arq}", data=info["bytes"], file_name=nome_arq, mime='application/pdf')
-                
-    except Exception as e:
-        st.error(f"Erro ao processar dados: {e}")
