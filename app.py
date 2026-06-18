@@ -107,7 +107,7 @@ def avaliar_teste(valor, idade, genero, teste):
             return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
-    """Gera um gráfico horizontal limpo, com afastamento total para a silhueta do rapaz."""
+    """Gera um gráfico horizontal limpo, com cores dos indicadores trocadas e azul do rapaz suavizado."""
     fig, ax = plt.subplots(figsize=(4.5, 0.7))
     
     inverter = teste_sigla in ["VEL", "AGI"]
@@ -125,32 +125,33 @@ def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
     # 1. Linha base cinzenta (Centralizada em y=1.0)
     ax.axhline(y=1.0, color='#e2e8f0', linewidth=4, zorder=1)
     
-    # 2. Pontos de Referência Normativa (na linha)
-    ax.scatter([zs], [1.0], color='#3498db', s=50, zorder=2)
-    ax.scatter([pa], [1.0], color='#2ecc71', s=50, zorder=2)
+    # 2. Pontos de Referência Normativa (Invertidos: ZS = Verde, PA = Azul)
+    ax.scatter([zs], [1.0], color='#2ecc71', s=50, zorder=2) # Verde para ZS
+    ax.scatter([pa], [1.0], color='#3498db', s=50, zorder=2) # Azul para PA
     
-    # 3. Identificação exata do género
+    # 3. Identificação exata do género e definição de cores
     gen_str = str(genero).strip().upper()
     is_fem = gen_str in ['F', 'FEMININO', 'RAPARIGA', 'FEM']
     
-    cor_aluno = '#e91e63' if is_fem else '#1e3a8a'     # Rosa / Azul Escuro
-    cor_borda = '#ad1457' if is_fem else '#172554'
+    # Azul suave/escolar (#3b82f6) para o rapaz e rosa (#e91e63) para a rapariga
+    cor_aluno = '#e91e63' if is_fem else '#3b82f6'     
+    cor_borda = '#ad1457' if is_fem else '#2563eb'
     
-    # 4. Desenho Anatómico com Espaçamento Alargado
+    # 4. Desenho Anatómico com Espaçamento Ajustado
     if is_fem:
         # Rapariga: Corpo triangular padrão + cabeça
         ax.scatter([val_aluno], [0.90], marker='^', s=130, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
         ax.scatter([val_aluno], [1.18], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     else:
-        # Rapaz: Corpo descido drasticamente para 0.75 e cabeça subida para 1.45
+        # Rapaz: Corpo triangular invertido descido e cabeça subida (sem sobreposição)
         ax.scatter([val_aluno], [0.75], marker='v', s=130, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=3)
         ax.scatter([val_aluno], [1.45], marker='o', s=55, color=cor_aluno, edgecolor=cor_borda, linewidth=0.8, zorder=4)
     
-    # 5. Textos de Referência no topo
-    ax.text(zs, 1.90, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
-    ax.text(pa, 1.90, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
+    # 5. Textos de Referência no topo (Cores trocadas para condizer com os pontos)
+    ax.text(zs, 1.90, f'ZS:{zs}', color='#27ae60', fontsize=8, ha='center', weight='bold') # Texto Verde
+    ax.text(pa, 1.90, f'PA:{pa}', color='#2980b9', fontsize=8, ha='center', weight='bold') # Texto Azul
 
-    # Limites verticais expandidos (teto em 2.5) para acomodar a cabeça subida
+    # Limites verticais
     ax.set_ylim(0.3, 2.5)
     
     # Limpeza absoluta de eixos e bordas
