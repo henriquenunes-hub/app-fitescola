@@ -11,6 +11,11 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
+# Forçar o Matplotlib a correr em segundo plano sem interface gráfica
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 # -------------------------------------------------------------------------
 # 1. BASE DE DADOS INTERNA (TABELAS FITESCOLA)
 # -------------------------------------------------------------------------
@@ -54,7 +59,7 @@ ref_fem = pd.DataFrame(dados_fem)
 ref_masc = pd.DataFrame(dados_masc)
 
 # -------------------------------------------------------------------------
-# 2. SUBCLASSE DO FPDF (RODAPÉ AUTOMÁTICO)
+# 2. SUBCLASSE DO FPDF (RODAPÉ ADAPTADO PARA HORIZONTAL - 297mm)
 # -------------------------------------------------------------------------
 class PDF_Relatorio(FPDF):
     def __init__(self, nome_professor, *args, **kwargs):
@@ -65,19 +70,20 @@ class PDF_Relatorio(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(127, 140, 141)
-        self.line(10, self.get_y() - 2, 200, self.get_y() - 2)
+        # Linha estendida para o formato horizontal (287mm de largura útil)
+        self.line(10, self.get_y() - 2, 287, self.get_y() - 2)
         texto_rodape = f"Relatório gerado por EduTwin | Professor Responsável: {self.nome_professor}"
         self.cell(0, 10, texto_rodape, 0, 0, 'L')
         self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
 
 # -------------------------------------------------------------------------
-# 3. FUNÇÕES DE LÓGICA, PROCESSAMENTO E ENVIO
+# 3. FUNÇÕES DE LÓGICA, PROGRESSÃO VISUAL E ENVIO
 # -------------------------------------------------------------------------
 def avaliar_teste(valor, idade, genero, teste):
     try:
         val = float(str(valor).replace(',', '.'))
     except:
-        return "N/A", "Sem dados válidos enviados."
+        return "N/A", "Sem dados válidos.", 0, 0, 0
 
     df_ref = ref_fem if genero.upper() in ['F', 'FEMININO', 'RAPARIGA'] else ref_masc
     idade_busca = max(9, min(20, int(idade)))
@@ -88,70 +94,122 @@ def avaliar_teste(valor, idade, genero, teste):
     
     if teste in ["VEL", "AGI"]:
         if val <= pa:
-            return "PA", "Parabéns! A tua aptidão física está excelente. Continua o bom trabalho!"
+            return "PA", "Excelente! Nível de elite atlética. Apresentas uma velocidade de reação e execução motora fantásticas. Continua focado nos treinos explosivos.", val, zs, pa
         elif val <= zs:
-            return "ZS", "Estás no bom caminho! Mantém-te ativo."
+            return "ZS", "Bom trabalho! Estás na Zona Saudável. A tua coordenação e tempos de resposta estão equilibrados para garantir uma boa saúde funcional. Mantém a regularidade.", val, zs, pa
         else:
-            return "AZS", "Precisas de melhorar. Concentra-te no treino de velocidade/coordenação."
+            return "AZS", "Abaixo da Zona Saudável. Precisas de estimular a tua agilidade e velocidade. Recomenda-se a prática de jogos desportivos dinâmicos e exercícios de mudanças de direção.", val, zs, pa
     else:
         if val >= pa:
-            return "PA", "Estás no bom caminho! Mantém-te ativo."
+            return "PA", "Incrível! Superaste a marca do Perfil Atlético. Revelas uma excelente aptidão muscular/cardiorrespiratória. Continua a desafiar os teus limites!", val, zs, pa
         elif val >= zs:
-            return "ZS", "Estás no bom caminho! Mantém o teu condicionamento físico geral."
+            return "ZS", "Parabéns! Garantes a presença na Zona Saudável. Tens uma base física sólida que protege o teu bem-estar e o teu rendimento escolar. Continua assim!", val, zs, pa
         else:
-            return "AZS", "Precisas de melhorar. Procura ser mais empenhado nas aulas."
+            return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
+
+def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla):
+    """Gera um gráfico de linha horizontal minimalista e salva como imagem temporária."""
+    fig, ax = plt.subplots(figsize=(4.5, 0.6))
+    
+    # Definir limites de forma inteligente conforme o tipo de teste
+    inverter = teste_sigla in ["VEL", "AGI"]
+    
+    if inverter:
+        # Menor valor é melhor
+        valores_eixo = [pa, zs, val_aluno]
+        min_x = min(valores_eixo) * 0.85
+        max_x = max(valores_eixo) * 1.15
+        ax.set_xlim(max_x, min_x) # Inverte o eixo visualmente
+    else:
+        # Maior valor é melhor
+        valores_eixo = [zs, pa, val_aluno]
+        min_x = min(valores_eixo) * 0.7 if min(valores_eixo) > 0 else 0
+        max_x = max(valores_eixo) * 1.2
+        ax.set_xlim(min_x, max_x)
+
+    # Desenhar a linha base cinzenta
+    ax.axhline(y=1, color='#bdc3c7', linewidth=3, zorder=1)
+    
+    # Marcar as zonas de referência com pontos estruturados
+    ax.scatter([zs], [1], color='#3498db', s=90, label='Z. Saudável', zorder=2)
+    ax.scatter([pa], [1], color='#2ecc71', s=90, label='P. Atlético', zorder=2)
+    
+    # Destacar o resultado do aluno com uma grande estrela dourada
+    ax.scatter([val_aluno], [1], color='#f1c40f', edgecolor='#d35400', s=180, marker='*', label='Tu', zorder=3)
+    
+    # Adicionar textos explicativos simples sobre os pontos
+    ax.text(zs, 1.25, f'ZS:{zs}', color='#2980b9', fontsize=8, ha='center', weight='bold')
+    ax.text(pa, 1.25, f'PA:{pa}', color='#27ae60', fontsize=8, ha='center', weight='bold')
+    ax.text(val_aluno, 0.65, f'{val_aluno}', color='#d35400', fontsize=9, ha='center', weight='bold')
+
+    # Limpeza total de bordas e eixos para design minimalista
+    ax.get_yaxis().set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_color('#eceff1')
+    ax.tick_params(axis='x', colors='#7f8c8d', labelsize=7)
+    
+    plt.tight_layout()
+    filename = f"temp_chart_{teste_sigla}_{val_aluno}.png"
+    plt.savefig(filename, dpi=160, transparent=True)
+    plt.close(fig)
+    return filename
 
 def criar_pdf(aluno, resultados, data_teste, nome_professor):
-    pdf = PDF_Relatorio(nome_professor=nome_professor)
+    # Configurar para Modo Paisagem ("L" - Landscape)
+    pdf = PDF_Relatorio(nome_professor=nome_professor, orientation='L', unit='mm', format='A4')
     pdf.add_page()
     
-    pdf.set_fill_color(41, 128, 185)
-    pdf.rect(0, 0, 210, 42, 'F')
-    
-    if os.path.exists("logo_escola.png"):
-        pdf.image("logo_escola.png", x=12, y=6, h=14)
-    elif os.path.exists("logo_escola.jpg"):
-        pdf.image("logo_escola.jpg", x=12, y=6, h=14)
-        
-    if os.path.exists("logo_fitescola.png"):
-        pdf.image("logo_fitescola.png", x=170, y=6, h=14)
-    elif os.path.exists("logo_fitescola.jpg"):
-        pdf.image("logo_fitescola.jpg", x=170, y=6, h=14)
-
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", 'B', 16)
+    # --- CABEÇALHO CLEAN (Sem barra azul) ---
     pdf.set_y(10)
-    pdf.cell(0, 8, "RELATÓRIO DE CONDIÇÃO FÍSICA", ln=True, align='C')
+    # Logótipo da Escola à Esquerda
+    if os.path.exists("logo_escola.png"):
+        pdf.image("logo_escola.png", x=10, y=10, h=15)
+    # Logótipo do FitEscola à Direita
+    if os.path.exists("logo_fitescola.png"):
+        pdf.image("logo_fitescola.png", x=257, y=10, h=15)
+        
+    # Títulos textuais em tom escuro corporativo
+    pdf.set_text_color(44, 62, 80)
+    pdf.set_font("Arial", 'B', 18)
+    pdf.cell(0, 7, "RELATÓRIO DE APTIDÃO FÍSICA INDIVIDUAL", ln=True, align='C')
     pdf.set_font("Arial", 'I', 11)
-    pdf.cell(0, 6, "Avaliação da Aptidão Física Escolar", ln=True, align='C')
+    pdf.set_text_color(127, 140, 141)
+    pdf.cell(0, 6, "Avaliação de Parâmetros Motores e Funcionais | Programa FitEscola", ln=True, align='C')
+    pdf.ln(8)
     
-    pdf.set_y(48)
+    # Bloco de Identificação do Aluno (Largura total adaptada de 277mm)
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(130, 7, f"Nome: {aluno['Nome']}", ln=False)
     pdf.set_font("Arial", 'B', 11)
+    pdf.cell(160, 6, f"Nome do Aluno: {aluno['Nome']}", ln=False)
     pdf.set_text_color(41, 128, 185)
-    pdf.cell(60, 7, f"Data do Teste: {data_teste}", ln=True, align='R')
+    pdf.cell(117, 6, f"Data da Avaliação: {data_teste}", ln=True, align='R')
     
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", '', 11)
-    pdf.cell(60, 7, f"Idade: {aluno['Idade']} anos", ln=False)
-    pdf.cell(60, 7, f"Género: {aluno['Género']}", ln=False)
-    pdf.cell(70, 7, f"Contacto: {aluno['Email']}", ln=True, align='R')
+    pdf.set_text_color(50, 50, 50)
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(60, 6, f"Idade: {aluno['Idade']} anos", ln=False)
+    pdf.cell(60, 6, f"Género: {aluno['Género']}", ln=False)
+    pdf.cell(157, 6, f"Contacto: {aluno['Email']}", ln=True, align='R')
+    pdf.ln(3)
+    pdf.line(10, pdf.get_y(), 287, pdf.get_y())
     pdf.ln(4)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
     
-    w_teste = 45
-    w_resultado = 25
-    w_classif = 45
-    w_feedback = 75
+    # --- TABELA DIMENSIONADA PARA LARGURA HORIZONTAL (Total = 277mm) ---
+    w_teste = 42
+    w_resultado = 20
+    w_classif = 38
+    w_grafico = 62
+    w_feedback = 115
     
-    pdf.set_font("Arial", 'B', 10)
-    pdf.cell(w_teste, 8, "Teste Efetuado", 1, 0, 'C')
-    pdf.cell(w_resultado, 8, "Resultado", 1, 0, 'C')
-    pdf.cell(w_classif, 8, "Classificação", 1, 0, 'C')
-    pdf.cell(w_feedback, 8, "Feedback Pedagógico", 1, 1, 'C')
+    # Cabeçalhos da Tabela
+    pdf.set_fill_color(245, 247, 250)
+    pdf.set_font("Arial", 'B', 9.5)
+    pdf.cell(w_teste, 8, "Teste Efetuado", 1, 0, 'C', fill=True)
+    pdf.cell(w_resultado, 8, "Resultado", 1, 0, 'C', fill=True)
+    pdf.cell(w_classif, 8, "Classificação", 1, 0, 'C', fill=True)
+    pdf.cell(w_grafico, 8, "Posicionamento Visual", 1, 0, 'C', fill=True)
+    pdf.cell(w_feedback, 8, "Feedback Pedagógico e Recomendações", 1, 1, 'C', fill=True)
     
     pdf.set_font("Arial", '', 9)
     mapa_testes = {
@@ -161,10 +219,12 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
         "Agilidade (s)": "AGI"
     }
     
+    arquivos_deletar = []
+    
     for nome_exibicao, sigla in mapa_testes.items():
         if nome_exibicao in aluno:
             res_aluno = aluno[nome_exibicao]
-            classe, fb = resultados[sigla]
+            classe, fb, val, zs, pa = resultados[sigla]
             
             if classe == "PA":
                 txt_classe = "Perfil Atlético"
@@ -173,50 +233,69 @@ def criar_pdf(aluno, resultados, data_teste, nome_professor):
             else:
                 txt_classe = "Abaixo Zona Saudável"
             
-            linhas_necessarias = len(pdf.multi_cell(w_feedback, 5, fb, split_only=True))
-            altura_linha = max(8, linhas_necessarias * 5)
+            # Altura Dinâmica baseada no tamanho do feedback textual
+            linhas_necessarias = len(pdf.multi_cell(w_feedback, 4.5, fb, split_only=True))
+            altura_linha = max(13, linhas_necessarias * 4.5) # Mínimo 13mm para acomodar bem o gráfico
             
             x_atual = pdf.get_x()
             y_atual = pdf.get_y()
             
+            # Células iniciais estáveis
             pdf.cell(w_teste, altura_linha, nome_exibicao, 1, 0, 'L')
             pdf.cell(w_resultado, altura_linha, str(res_aluno), 1, 0, 'C')
             
+            # Colorir texto da classificação
             if classe == "PA":
                 pdf.set_text_color(39, 174, 96)
             elif classe == "ZS":
                 pdf.set_text_color(41, 128, 185)
             else:
                 pdf.set_text_color(192, 41, 43)
-                
             pdf.cell(w_classif, altura_linha, txt_classe, 1, 0, 'C')
             pdf.set_text_color(0, 0, 0)
             
-            pdf.set_xy(x_atual + w_teste + w_resultado + w_classif, y_atual)
+            # --- COLUNA DO GRÁFICO ---
+            # Cria moldura em branco para receber a imagem por cima
+            pdf.cell(w_grafico, altura_linha, "", 1, 0)
+            if classe != "N/A":
+                img_path = gerar_grafico_linha(val, zs, pa, sigla)
+                arquivos_deletar.append(img_path)
+                # Injeta a imagem exatamente centralizada na célula
+                pdf.image(img_path, x=x_atual + w_teste + w_resultado + w_classif + 1, y=y_atual + 1.5, w=w_grafico - 2, h=altura_linha - 3)
+            
+            # --- COLUNA DO FEEDBACK ---
+            pdf.set_xy(x_atual + w_teste + w_resultado + w_classif + w_grafico, y_atual)
             pdf.multi_cell(w_feedback, altura_linha / linhas_necessarias, fb, 1, 'L')
             pdf.set_xy(x_atual, y_atual + altura_linha)
             
-    pdf.ln(8)
+    pdf.ln(5)
     
-    pdf.set_fill_color(245, 247, 250)
-    pdf.rect(10, pdf.get_y(), 190, 32, 'F')
-    pdf.set_font("Arial", 'B', 10.5)
-    pdf.cell(0, 6, "Recomendações Gerais do teu Professor:", ln=True)
-    pdf.set_font("Arial", '', 9.5)
-    pdf.multi_cell(0, 5, "- Para zonas 'Abaixo da Zona Saudável': Procura treinar essas capacidades, pelo menos, 2 a 3 vezes por semana (ex: corrida contínua para o Vaivém ou exercícios de força e flexibilidade para os restantes testes).\n- Se estás na 'Zona Saudável' ou 'Perfil Atlético': Continua ativo - na escola e fora dela - para manteres a tua excelente saúde funcional!")
+    # Recomendações finais horizontais
+    pdf.set_fill_color(248, 249, 250)
+    pdf.rect(10, pdf.get_y(), 277, 20, 'F')
+    pdf.set_font("Arial", 'B', 9.5)
+    pdf.cell(0, 5, "Orientações de Desenvolvimento Desportivo:", ln=True)
+    pdf.set_font("Arial", '', 9)
+    pdf.multi_cell(0, 4.5, "Os resultados assinalados com (*) identificam a tua posição atual perante a escala nacional. Lembra-te de que a condição física é dinâmica: o treino estruturado focado nas tuas áreas 'Abaixo da Zona Saudável' irá restabelecer o teu equilíbrio muscular e motor. Continua focado!")
     
-    return pdf.output(dest='S').encode('latin-1')
+    pdf_output = pdf.output(dest='S').encode('latin-1')
+    
+    # Limpeza dos gráficos temporários criados em disco
+    for f in arquivos_deletar:
+        if os.path.exists(f):
+            os.remove(f)
+            
+    return pdf_output
 
 def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
     try:
         cfg = st.secrets["email"]
-        
         msg = MIMEMultipart()
         msg['From'] = cfg["remetente"]
         msg['To'] = email_destino
-        msg['Subject'] = f"FitEscola: O teu Relatório de Aptidão Física - {nome_aluno}"
+        msg['Subject'] = f"FitEscola: Relatório Individualizado de Condição Física - {nome_aluno}"
         
-        corpo = f"Olá {nome_aluno},\n\nSegue, em anexo, o teu relatório individualizado com os resultados alcançados na bateria de testes do FitEscola, bem como algumas sugestões de melhoria.\n\nContinua com bom empenho nas aulas!\n\nCumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
+        corpo = f"Olá {nome_aluno},\n\nJunto enviamos em anexo o teu novo relatório analítico do FitEscola, agora atualizado com gráficos horizontais de posicionamento e orientações pedagógicas exclusivas.\n\nBons treinos!\n\nCom os melhores cumprimentos,\n{st.session_state.get('nome_prof_global', 'O teu Professor de Educação Física')}"
         msg.attach(MIMEText(corpo, 'plain', 'utf-8'))
         
         part = MIMEBase('application', "octet-stream")
@@ -239,7 +318,7 @@ def disparar_email(email_destino, nome_aluno, pdf_conteudo, nome_arquivo):
 # 4. INTERFACE STREAMLIT
 # -------------------------------------------------------------------------
 st.title("🏋️‍♂️ EduTwin: Portal Interativo FitEscola")
-st.markdown("Ferramenta avançada para gestão de aptidão física escolar.")
+st.markdown("Plataforma avançada com gráficos analíticos horizontais integrados.")
 
 st.sidebar.header("⚙️ Definições do Relatório")
 nome_prof = st.sidebar.text_input("Nome do Professor (Rodapé/E-mail):", value="O teu Nome Completo")
@@ -249,21 +328,15 @@ data_escolhida = st.sidebar.date_input("Data de Realização dos Testes:", datet
 data_formatada = data_escolhida.strftime("%d/%m/%Y")
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🔒 Estado do Servidor de E-mail")
+st.sidebar.subheader("🔒 Estado do Servidor")
 if "email" in st.secrets:
-    st.sidebar.success("✔️ Credenciais de e-mail ativas.")
+    st.sidebar.success("✔️ Servidor de E-mail Conectado.")
 else:
-    st.sidebar.error("❌ Configura os 'Secrets' do e-mail no painel do Streamlit.")
+    st.sidebar.error("❌ Configura os Secrets de e-mail.")
 
-with st.expander("📌 Estrutura Obrigatória do Google Sheets"):
-    st.write("O teu arquivo de dados deve conter exatamente estas colunas:")
-    st.code("Nome, Idade, Género, Email, Vaivém (Percursos), Abdominais (Rep.), Flexões (Rep.), Imp. Horizontal (cm), Velocidade 40m (s), Senta e Alcança (cm), Agilidade (s)")
-
-# --- LOGICA DA OPÇÃO B DE AUTOMATIZAÇÃO DO LINK ---
-# O código tenta ler 'link_dados' gravado nos segredos. Se não houver, deixa vazio.
 link_gravado = st.secrets.get("dados", {}).get("link_dados", "")
 
-link_sheets = st.text_input("Insere aqui o link do teu Google Sheets (Publicado como CSV):", 
+link_sheets = st.text_input("Link do Google Sheets detetado automaticamente:", 
                             value=link_gravado,
                             placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv")
 
@@ -277,48 +350,48 @@ if link_sheets:
             link_csv = link_sheets
             
         df_alunos = pd.read_csv(link_csv)
-        st.success("🎉 Dados dos alunos carregados com sucesso!")
+        st.success("🎉 Base de dados integrada e sincronizada!")
         st.dataframe(df_alunos)
         
         st.subheader("📊 Processamento e Ações em Massa")
-        
         col1, col2 = st.columns(2)
         
         if 'pack_pdfs' not in st.session_state:
             st.session_state['pack_pdfs'] = {}
             st.session_state['dados_prontos'] = False
 
-        if col1.button("🔄 1. Analisar Dados e Gerar PDFs"):
+        if col1.button("🔄 1. Analisar Dados & Gerar Relatórios"):
             st.session_state['pack_pdfs'] = {}
-            for index, aluno in df_alunos.iterrows():
-                if pd.isna(aluno['Nome']):
-                    continue
+            with st.spinner("A desenhar gráficos personalizados e a formatar PDFs..."):
+                for index, aluno in df_alunos.iterrows():
+                    if pd.isna(aluno['Nome']):
+                        continue
+                        
+                    res_aluno = {}
+                    res_aluno["VV"] = avaliar_teste(aluno.get("Vaivém (Percursos)", 0), aluno['Idade'], aluno['Género'], "VV")
+                    res_aluno["ABD"] = avaliar_teste(aluno.get("Abdominais (Rep.)", 0), aluno['Idade'], aluno['Género'], "ABD")
+                    res_aluno["FLX"] = avaliar_teste(aluno.get("Flexões (Rep.)", 0), aluno['Idade'], aluno['Género'], "FLX")
+                    res_aluno["IMP"] = avaliar_teste(aluno.get("Imp. Horizontal (cm)", 0), aluno['Idade'], aluno['Género'], "IMP")
+                    res_aluno["VEL"] = avaliar_teste(aluno.get("Velocidade 40m (s)", 0), aluno['Idade'], aluno['Género'], "VEL")
+                    res_aluno["SA"] = avaliar_teste(aluno.get("Senta e Alcança (cm)", 0), aluno['Idade'], aluno['Género'], "SA")
+                    res_aluno["AGI"] = avaliar_teste(aluno.get("Agilidade (s)", 0), aluno['Idade'], aluno['Género'], "AGI")
                     
-                res_aluno = {}
-                res_aluno["VV"] = avaliar_teste(aluno.get("Vaivém (Percursos)", 0), aluno['Idade'], aluno['Género'], "VV")
-                res_aluno["ABD"] = avaliar_teste(aluno.get("Abdominais (Rep.)", 0), aluno['Idade'], aluno['Género'], "ABD")
-                res_aluno["FLX"] = avaliar_teste(aluno.get("Flexões (Rep.)", 0), aluno['Idade'], aluno['Género'], "FLX")
-                res_aluno["IMP"] = avaliar_teste(aluno.get("Imp. Horizontal (cm)", 0), aluno['Idade'], aluno['Género'], "IMP")
-                res_aluno["VEL"] = avaliar_teste(aluno.get("Velocidade 40m (s)", 0), aluno['Idade'], aluno['Género'], "VEL")
-                res_aluno["SA"] = avaliar_teste(aluno.get("Senta e Alcança (cm)", 0), aluno['Idade'], aluno['Género'], "SA")
-                res_aluno["AGI"] = avaliar_teste(aluno.get("Agilidade (s)", 0), aluno['Idade'], aluno['Género'], "AGI")
-                
-                pdf_bytes = criar_pdf(aluno, res_aluno, data_formatada, nome_prof)
-                nome_limpo = str(aluno['Nome']).replace(" ", "_")
-                
-                st.session_state['pack_pdfs'][f"Relatorio_{nome_limpo}.pdf"] = {
-                    "bytes": pdf_bytes,
-                    "email": aluno['Email'],
-                    "nome_aluno": aluno['Nome']
-                }
+                    pdf_bytes = criar_pdf(aluno, res_aluno, data_formatada, nome_prof)
+                    nome_limpo = str(aluno['Nome']).replace(" ", "_")
+                    
+                    st.session_state['pack_pdfs'][f"Relatorio_{nome_limpo}.pdf"] = {
+                        "bytes": pdf_bytes,
+                        "email": aluno['Email'],
+                        "nome_aluno": aluno['Nome']
+                    }
             st.session_state['dados_prontos'] = True
             st.balloons()
-            st.success(f"Análise concluída para {len(st.session_state['pack_pdfs'])} alunos!")
+            st.success(f"Sucesso! {len(st.session_state['pack_pdfs'])} relatórios gráficos criados.")
 
         if st.session_state['dados_prontos']:
-            if col2.button("📧 2. Enviar Relatórios por E-mail aos Alunos"):
+            if col2.button("📧 2. Disparar E-mails Automatizados"):
                 if "email" not in st.secrets:
-                    st.error("Impossível enviar. Credenciais em falta na área 'Secrets'.")
+                    st.error("Credenciais em falta.")
                 else:
                     sucessos = 0
                     barra_progresso = st.progress(0)
@@ -329,14 +402,11 @@ if link_sheets:
                             sucessos += 1
                         barra_progresso.progress((i + 1) / total)
                     
-                    if sucessos == total:
-                        st.success(f"🚀 Excelente! Todos os {sucessos} e-mails foram enviados com sucesso!")
-                    else:
-                        st.warning(f"Processo terminado: {sucessos} de {total} e-mails enviados com sucesso.")
+                    st.success(f"🚀 Concluído! {sucessos} e-mails enviados.")
 
-            st.write("### ⬇ Preservação de Dados: Descarregar Manualmente")
+            st.write("### ⬇ Cópia de Segurança Local")
             for nome_arq, info in st.session_state['pack_pdfs'].items():
                 st.download_button(label=f"📥 {nome_arq}", data=info["bytes"], file_name=nome_arq, mime='application/pdf')
                 
     except Exception as e:
-        st.error(f"Erro ao ler os dados do Google Sheets. Detalhe do erro: {e}")
+        st.error(f"Erro ao processar dados: {e}")
