@@ -104,27 +104,50 @@ def avaliar_teste(valor, idade, genero, teste):
     except:
         return "N/A", "Sem dados válidos.", 0, 0, 0
 
-    df_ref = ref_fem if genero.upper() in ['F', 'FEMININO', 'RAPARIGA'] else ref_masc
+    df_ref = ref_fem if genero.upper() in ['F', 'FEMININO', 'RAPARIGA', 'FEM'] else ref_masc
     idade_busca = max(9, min(20, int(idade)))
     linha = df_ref[df_ref['Idade'] == idade_busca].iloc[0]
     
     zs = linha[f"{teste}_ZS"]
     pa = linha[f"{teste}_PA"]
     
+    # 1. Determina o nível alcançado (Classe)
     if teste in ["VEL", "AGI"]:
         if val <= pa:
-            return "PA", "Excelente! Nível de elite atlética. Apresentas uma velocidade de reação e execução motora fantásticas. Continua focado nos treinos explosivos.", val, zs, pa
+            classe = "PA"
         elif val <= zs:
-            return "ZS", "Bom trabalho! Estás na Zona Saudável. A tua coordenação e tempos de resposta estão equilibrados para garantir uma boa saúde funcional. Mantém a regularidade.", val, zs, pa
+            classe = "ZS"
         else:
-            return "AZS", "Abaixo da Zona Saudável. Precisas de estimular a tua agilidade e velocidade. Recomenda-se a prática de jogos desportivos dinâmicos e exercícios de mudanças de direção.", val, zs, pa
+            classe = "AZS"
     else:
         if val >= pa:
-            return "PA", "Incrível! Superaste a marca do Perfil Atlético. Revelas uma excelente aptidão muscular/cardiorrespiratória. Continua a desafiar os teus limites!", val, zs, pa
+            classe = "PA"
         elif val >= zs:
-            return "ZS", "Parabéns! Garantes a presença na Zona Saudável. Tens uma base física sólida que protege o teu bem-estar e o teu rendimento escolar. Continua assim!", val, zs, pa
+            classe = "ZS"
         else:
-            return "AZS", "Abaixo da Zona Saudável. Esta capacidade requer mais empenho e foco. Tenta praticar exercícios de força controlada ou corrida contínua 2 a 3 vezes por semana.", val, zs, pa
+            classe = "AZS"
+
+    # 2. Mapeamento da sigla interna da App para o nome exato da linha do teu CSV
+    mapa_nomes_csv = {
+        "VV": "Vaivém",
+        "ABD": "Abdominais",
+        "FLX": "Flexões de braços",
+        "IMP": "Impulsão Horizontal",  # Confirma se no teu CSV a linha se chama exatamente assim
+        "VEL": "Velocidade 40m",
+        "SA": "Flexibilidade mmii",    # Identificado na última linha do teu ficheiro para o Senta e Alcança
+        "AGI": "Agilidade"             # Confirma se no teu CSV a linha se chama exatamente assim
+    }
+    
+    nome_no_csv = mapa_nomes_csv.get(teste, "")
+    
+    # 3. Procura o texto personalizado no dicionário do CSV
+    fb_texto = "Sem orientação pedagógica registada."
+    if nome_no_csv in feedbacks_csv:
+        if classe in feedbacks_csv[nome_no_csv]:
+            # Guarda o texto da célula correspondente (AZS, ZS ou PA)
+            fb_texto = str(feedbacks_csv[nome_no_csv][classe]).strip()
+            
+    return classe, fb_texto, val, zs, pa
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
     """Gera um gráfico horizontal limpo, com cores dos indicadores trocadas e azul do rapaz suavizado."""
