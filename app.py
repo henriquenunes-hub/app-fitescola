@@ -146,12 +146,12 @@ def avaliar_teste(valor, idade, genero, teste):
         else:
             classe = "AZS"
 
-    # MAPA DE CORRESPONDÊNCIA AJUSTADO AO TEU CSV
+    # MAPA DE CORRESPONDÊNCIA CORRIGIDO (Idêntico ao teu ficheiro CSV)
     mapa_nomes_csv = {
         "VV": "vaivém",
         "ABD": "abdominais",
         "FLX": "flexões de braços",
-        "IMP": "impulslão horizontal", # Mapeado com a gralha exata do CSV para funcionar
+        "IMP": "impulsão horizontal",  # Correção da grafia realizada aqui
         "VEL": "velocidade 40m",
         "SA": "flexibilidade mmii",
         "AGI": "agilidade"
@@ -164,7 +164,7 @@ def avaliar_teste(valor, idade, genero, teste):
     
     if nome_no_csv in feedbacks_csv:
         if classe in feedbacks_csv[nome_no_csv]:
-            # Extrai o texto da célula correspondente (AZS, ZS ou PA)
+            # Extrai o texto exato da célula (AZS, ZS ou PA)
             fb_texto = str(feedbacks_csv[nome_no_csv][classe]).strip()
     elif teste == "AGI":
         fb_texto = "Parâmetro de Agilidade. (Linha em falta no ficheiro CSV)."
