@@ -21,18 +21,22 @@ import matplotlib.pyplot as plt
 # -------------------------------------------------------------------------
 @st.cache_data
 def carregar_feedbacks_pedagogicos():
-    """Lê o ficheiro CSV de forma robusta (suporta vários encodings e separadores do Excel)."""
-    ficheiro_csv = "feedbacks.csv"
+    """Lê diretamente o ficheiro 'feedbacks.csv' garantindo a compatibilidade com o Excel."""
+    # Aponta para o nome correto do ficheiro no teu GitHub
+    ficheiro_csv = "feedbacks.csv" 
+    
     if not os.path.exists(ficheiro_csv):
         return {}
     
-    # Tenta combinações de encodings e separadores comuns (Excel PT usa ';')
+    # Mantém a leitura robusta para o caso de o Excel ter guardado com ';' ou ','
     for encoding in ['utf-8-sig', 'latin-1', 'utf-8', 'cp1252']:
         for sep in [';', ',']:
             try:
                 df = pd.read_csv(ficheiro_csv, sep=sep, encoding=encoding)
                 if 'Teste' in df.columns:
-                    # Remove espaços e força tudo para minúsculas para garantir o emparelhamento
+                    # Limpa espaços invisíveis nas colunas (AZS, ZS, PA)
+                    df.columns = df.columns.str.strip()
+                    # Normaliza a coluna dos testes para minúsculas
                     df['Teste_Limpo'] = df['Teste'].astype(str).str.strip().str.lower()
                     return df.set_index("Teste_Limpo").to_dict(orient="index")
             except:
