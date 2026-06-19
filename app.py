@@ -19,31 +19,40 @@ import matplotlib.pyplot as plt
 # -------------------------------------------------------------------------
 # CARREGAMENTO DINÂMICO DE FEEDBACKS PEDAGÓGICOS
 # -------------------------------------------------------------------------
-@st.cache_data
 def carregar_feedbacks_pedagogicos():
-    """Lê diretamente o ficheiro 'feedbacks.csv' garantindo a compatibilidade com o Excel."""
-    # Aponta para o nome correto do ficheiro no teu GitHub
-    ficheiro_csv = "feedbacks.csv" 
+    """Procura automaticamente qualquer CSV de feedbacks no repositório e carrega-o."""
+    import glob
     
+    # 1. Procura por qualquer ficheiro .csv que contenha "feedback" no nome (independente de maiúsculas)
+    ficheiro_csv = None
+    for f in glob.glob("*.csv"):
+        if "feedback" in f.lower():
+            ficheiro_csv = f
+            break
+            
+    # Se não encontrar nenhum por palavra-chave, tenta o nome padrão
+    if not ficheiro_csv:
+        ficheiro_csv = "feedbacks.csv"
+        
     if not os.path.exists(ficheiro_csv):
         return {}
     
-    # Mantém a leitura robusta para o caso de o Excel ter guardado com ';' ou ','
+    # 2. Tenta ler o ficheiro com múltiplos encodings e separadores (, ou ;)
     for encoding in ['utf-8-sig', 'latin-1', 'utf-8', 'cp1252']:
         for sep in [';', ',']:
             try:
                 df = pd.read_csv(ficheiro_csv, sep=sep, encoding=encoding)
                 if 'Teste' in df.columns:
-                    # Limpa espaços invisíveis nas colunas (AZS, ZS, PA)
+                    # Limpa espaços invisíveis nos nomes das colunas (AZS, ZS, PA)
                     df.columns = df.columns.str.strip()
-                    # Normaliza a coluna dos testes para minúsculas
+                    # Garante que a coluna 'Teste' está limpa e em minúsculas para o cruzamento
                     df['Teste_Limpo'] = df['Teste'].astype(str).str.strip().str.lower()
                     return df.set_index("Teste_Limpo").to_dict(orient="index")
             except:
                 continue
     return {}
 
-# Inicializa o dicionário global
+# Inicializa o dicionário global diretamente (sem cache para não bloquear)
 feedbacks_csv = carregar_feedbacks_pedagogicos()
 
 # -------------------------------------------------------------------------
