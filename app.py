@@ -265,7 +265,7 @@ st.title("📊 EduTwin - Dashboard de Análise FitEscola")
 st.write("O sistema processa automaticamente a folha de dados de saúde escolar para emitir os PDFs unificados.")
 
 # Caminho predefinido do ficheiro no repositório para carregamento imediato e automático
-ficheiro_automatico = "Fitescola_Relatórios - Folha1.csv"
+ficheiro_automatico = "Fitescola_Relatórios.csv"
 
 if os.path.exists(ficheiro_automatico):
     # Parsing robusto estruturado para o cabeçalho duplo (Senta e Alcança: Dta / Esq)
