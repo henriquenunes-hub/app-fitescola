@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import io
-import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -16,7 +15,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.graphics.shapes import Drawing, Rect, String, Circle
 
 # ==============================================================================
-# CONFIGURAÇÃO INTERNA DO SEU SERVIDOR DE E-MAIL (Modifique apenas aqui se necessário)
+# CONFIGURAÇÃO INTERNA DO SEU SERVIDOR DE E-MAIL
 # ==============================================================================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -223,7 +222,7 @@ def gerar_pdf_aluno(row):
         story.append(Spacer(1, 6))
     
     story.append(Paragraph("<b>Orientações de Desenvolvimento Desportivo:</b>", style_td))
-    conteudo_orientacoes = "• A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
+    conteudo_orientacoes = "• A silhueta assinalada identifica a tua position atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
     story.append(Paragraph(conteudo_orientacoes, style_orientacoes))
     
     doc.build(story, onFirstPage=desenhar_decoracoes_pagina, onLaterPages=desenhar_decoracoes_pagina)
@@ -259,18 +258,19 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
         return str(e)
 
 # ==============================================================================
-# 6. CARREGAMENTO AUTOMÁTICO DO FICHEIRO E DASHBOARD PRINCIPAL
+# 6. CARREGAMENTO AUTOMÁTICO E DINÂMICO VIA GOOGLE SHEETS URL
 # ==============================================================================
-st.title("📊 EduTwin - Dashboard de Análise FitEscola")
-st.write("O sistema processa automaticamente a folha de dados de saúde escolar para emitir os PDFs unificados.")
+st.title("📊 EduTwin - Envio de Relatório Individual de FitEscola")
+st.write("O sistema processa automaticamente a folha de dados em nuvem para emitir os PDFs unificados.")
 
-# Caminho predefinido do ficheiro no repositório para carregamento imediato e automático
-ficheiro_automatico = "Fitescola_Relatórios.csv"
+# Definição do link direto obtido através do seu ficheiro ou das secrets do Streamlit
+url_ficheiro = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRsrA3MZK5bXsdaz2uyNrC8-adK9-bAR2IWtOwor6BCeEacxN3hSQ1IcGhICWQu3ErMTNDDYjSFAn5L/pub?output=csv"
 
-if os.path.exists(ficheiro_automatico):
-    # Parsing robusto estruturado para o cabeçalho duplo (Senta e Alcança: Dta / Esq)
-    raw_df = pd.read_csv(ficheiro_automatico, header=None)
+try:
+    # Descarrega e faz o parse da tabela em tempo real
+    raw_df = pd.read_csv(url_ficheiro, header=None)
     
+    # Tratamento inteligente para cabeçalho duplo (Deteta se a linha 1 tem 'Dta' e 'Esq')
     if raw_df.shape[0] > 2 and (str(raw_df.iloc[1, 9]).strip() == "Dta" or "Esq" in str(raw_df.iloc[1].values)):
         df = raw_df.iloc[2:].copy()
         df.columns = [
@@ -280,9 +280,12 @@ if os.path.exists(ficheiro_automatico):
         ]
         df = df.dropna(subset=['Nome'])
     else:
-        df = pd.read_csv(ficheiro_automatico)
+        df = pd.read_csv(url_ficheiro)
         if 'Senta_Dir' not in df.columns:
             df.rename(columns={df.columns[-2]: 'Senta_Dir', df.columns[-1]: 'Senta_Esq'}, inplace=True)
+            
+    # Remove espaços indesejados nos nomes para evitar falhas de indexação
+    df['Nome'] = df['Nome'].astype(str).str.strip()
             
     # Página Inicial: Apresenta a Pré-visualização Automática imediatamente
     st.subheader("👀 Pré-visualização dos Alunos Importados")
@@ -334,5 +337,6 @@ if os.path.exists(ficheiro_automatico):
             
             status_log.empty()
             st.success(f"🎉 Processo concluído! {sucessos} de {len(df)} e-mails enviados com sucesso.")
-else:
-    st.error(f"❌ Erro crítico: O ficheiro '{ficheiro_automatico}' não foi encontrado na raiz do projeto. Por favor, garante que o nome do ficheiro no GitHub corresponde exatamente a este.")
+
+except Exception as erro:
+    st.error(f"❌ Erro ao tentar ler a folha online do Google Sheets. Detalhes: {erro}")
