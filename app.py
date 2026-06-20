@@ -76,23 +76,43 @@ feedbacks_referencia = {
     }
 }
 
-def determinar_zona(teste, valor):
+def determinar_zona(teste, valor, genero="M"):
     try:
         v = float(str(valor).replace(',', '.'))
     except:
         return "ZS"
-    if teste == "Vaivém":
-        return "AZS" if v < 40 else ("PA" if v >= 75 else "ZS")
-    elif teste == "Abdominais":
-        return "AZS" if v < 24 else ("PA" if v >= 68 else "ZS")
-    elif teste == "Flexões":
-        return "AZS" if v < 14 else ("PA" if v >= 22 else "ZS")
-    elif teste == "Imp_Horizontal":
-        return "AZS" if v < 155 else ("PA" if v >= 210 else "ZS")
-    elif teste == "Velocidade":
-        return "AZS" if v > 6.50 else ("PA" if v <= 6.00 else "ZS")
-    elif teste in ["Senta_Dir", "Senta_Esq"]:
-        return "AZS" if v < 22 else ("PA" if v >= 32 else "ZS")
+    
+    gen = str(genero).strip().upper()
+    
+    # Classificação diferenciada por Género com base nos dados de referência oficiais
+    if gen == "F":
+        if teste == "Vaivém":
+            return "AZS" if v < 37 else ("PA" if v >= 50 else "ZS")
+        elif teste == "Abdominais":
+            return "AZS" if v < 18 else ("PA" if v >= 66 else "ZS")
+        elif teste == "Flexões":
+            return "AZS" if v < 7 else ("PA" if v >= 19 else "ZS")
+        elif teste == "Imp_Horizontal":
+            return "AZS" if v < 132 else ("PA" if v >= 185 else "ZS")
+        elif teste == "Velocidade":
+            return "AZS" if v > 7.70 else ("PA" if v <= 6.70 else "ZS")
+        elif teste in ["Senta_Dir", "Senta_Esq"]:
+            return "AZS" if v < 31 else ("PA" if v >= 36.3 else "ZS")
+    else:
+        # Rapazes / Masculino
+        if teste == "Vaivém":
+            return "AZS" if v < 40 else ("PA" if v >= 77 else "ZS")
+        elif teste == "Abdominais":
+            return "AZS" if v < 24 else ("PA" if v >= 71 else "ZS")
+        elif teste == "Flexões":
+            return "AZS" if v < 14 else ("PA" if v >= 24 else "ZS")
+        elif teste == "Imp_Horizontal":
+            return "AZS" if v < 155 else ("PA" if v >= 214 else "ZS")
+        elif teste == "Velocidade":
+            return "AZS" if v > 6.50 else ("PA" if v <= 5.97 else "ZS")
+        elif teste in ["Senta_Dir", "Senta_Esq"]:
+            return "AZS" if v < 22 else ("PA" if v >= 30.4 else "ZS")
+            
     return "ZS"
 
 # ==============================================================================
@@ -173,9 +193,11 @@ def gerar_pdf_aluno(row):
         ("Velocidade 40m (s)", "Velocidade", "Velocidade")
     ]
     
+    genero_aluno = row.get('Género', 'M')
+    
     for nome_exibicao, chave_zona, chave_fb in testes:
         val = row[nome_exibicao]
-        zona = determinar_zona(chave_zona, val)
+        zona = determinar_zona(chave_zona, val, genero_aluno)
         txt_zona = "Abaixo Zona Saudável" if zona=="AZS" else ("Perfil Atlético" if zona=="PA" else "Zona Saudável")
         feedback = feedbacks_referencia[chave_fb][zona]
         
@@ -189,8 +211,8 @@ def gerar_pdf_aluno(row):
     
     val_dir = row["Senta_Dir"]
     val_esq = row["Senta_Esq"]
-    zona_dir = determinar_zona("Senta_Dir", val_dir)
-    zona_esq = determinar_zona("Senta_Esq", val_esq)
+    zona_dir = determinar_zona("Senta_Dir", val_dir, genero_aluno)
+    zona_esq = determinar_zona("Senta_Esq", val_esq, genero_aluno)
     
     txt_z_dir = "AZS" if zona_dir=="AZS" else ("PA" if zona_dir=="PA" else "ZS")
     txt_z_esq = "AZS" if zona_esq=="AZS" else ("PA" if zona_esq=="PA" else "ZS")
@@ -264,7 +286,7 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
 # ==============================================================================
 # 6. CARREGAMENTO AUTOMÁTICO E DINÂMICO VIA GOOGLE SHEETS URL
 # ==============================================================================
-st.title("📊 EduTwin - Dashboard de Análise FitEscola")
+st.title("📊 EduTwin - Envio de Relatórios Individuais FitEscola")
 st.write("O sistema processa automaticamente a folha de dados em nuvem para emitir os PDFs unificados.")
 
 try:
