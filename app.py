@@ -15,26 +15,30 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.graphics.shapes import Drawing, Rect, String, Circle
 
 # ==============================================================================
-# CONFIGURAÇÃO INTERNA DO SEU SERVIDOR DE E-MAIL
+# CONFIGURAÇÃO SEGURA VIA STREAMLIT SECRETS (MAPEADA COM A SUA ESTRUTURA TOML)
 # ==============================================================================
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USER = "o_teu_email@gmail.com"         # O seu e-mail de envio original
-SMTP_PASS = "a_tua_palavra_passe_aqui"      # A sua palavra-passe de aplicação interna
+try:
+    SMTP_SERVER = st.secrets["email"]["smtp_server"]
+    SMTP_PORT = int(st.secrets["email"]["smtp_port"])
+    SMTP_USER = st.secrets["email"]["remetente"]
+    SMTP_PASS = st.secrets["email"]["password"]
+    url_ficheiro = st.secrets["dados"]["link_dados"]
+except KeyError as e:
+    st.error(f"❌ Erro de Configuração: Verifique se o seu menu 'Secrets' tem exatamente a estrutura correta. Falta a chave: {e}")
+    st.stop()
 
 # ==============================================================================
 # 1. CONFIGURAÇÃO DA INTERFACE E SIDEBAR ORIGINAL
 # ==============================================================================
 st.set_page_config(page_title="EduTwin - Relatório FitEscola", layout="wide")
 
-# Barra Lateral Original - Limpa e Direta
 st.sidebar.header("📋 Configurações do Relatório")
 nome_professor = st.sidebar.text_input("Nome do Professor Responsável", "O teu Nome Completo")
 data_teste = st.sidebar.date_input("Data da Avaliação")
 
 st.sidebar.markdown("---")
 st.sidebar.header("✉️ Estado do Sistema")
-st.sidebar.success("Servidor de E-mail: Funcional / Configurado")
+st.sidebar.success("Servidor de E-mail: Autenticado via Secrets")
 
 # ==============================================================================
 # 2. DICIONÁRIO DE FEEDBACKS PEDAGÓGICOS (BATERIA FITESCOLA)
@@ -129,7 +133,7 @@ def desenhar_decoracoes_pagina(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# 4. MOTOR DO LAYOUT DO PDF (1 PÁGINA)
+# 4. MOTOR DO LAYOUT DO PDF (GARANTE 1 PÁGINA)
 # ==============================================================================
 def gerar_pdf_aluno(row):
     pdf_buffer = io.BytesIO()
@@ -222,7 +226,7 @@ def gerar_pdf_aluno(row):
         story.append(Spacer(1, 6))
     
     story.append(Paragraph("<b>Orientações de Desenvolvimento Desportivo:</b>", style_td))
-    conteudo_orientacoes = "• A silhueta assinalada identifica a tua position atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
+    conteudo_orientacoes = "• A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
     story.append(Paragraph(conteudo_orientacoes, style_orientacoes))
     
     doc.build(story, onFirstPage=desenhar_decoracoes_pagina, onLaterPages=desenhar_decoracoes_pagina)
@@ -260,14 +264,10 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
 # ==============================================================================
 # 6. CARREGAMENTO AUTOMÁTICO E DINÂMICO VIA GOOGLE SHEETS URL
 # ==============================================================================
-st.title("📊 EduTwin - Envio de Relatório Individual de FitEscola")
+st.title("📊 EduTwin - Dashboard de Análise FitEscola")
 st.write("O sistema processa automaticamente a folha de dados em nuvem para emitir os PDFs unificados.")
 
-# Definição do link direto obtido através do seu ficheiro ou das secrets do Streamlit
-url_ficheiro = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRsrA3MZK5bXsdaz2uyNrC8-adK9-bAR2IWtOwor6BCeEacxN3hSQ1IcGhICWQu3ErMTNDDYjSFAn5L/pub?output=csv"
-
 try:
-    # Descarrega e faz o parse da tabela em tempo real
     raw_df = pd.read_csv(url_ficheiro, header=None)
     
     # Tratamento inteligente para cabeçalho duplo (Deteta se a linha 1 tem 'Dta' e 'Esq')
@@ -284,10 +284,8 @@ try:
         if 'Senta_Dir' not in df.columns:
             df.rename(columns={df.columns[-2]: 'Senta_Dir', df.columns[-1]: 'Senta_Esq'}, inplace=True)
             
-    # Remove espaços indesejados nos nomes para evitar falhas de indexação
     df['Nome'] = df['Nome'].astype(str).str.strip()
             
-    # Página Inicial: Apresenta a Pré-visualização Automática imediatamente
     st.subheader("👀 Pré-visualização dos Alunos Importados")
     st.dataframe(df, use_container_width=True)
     
