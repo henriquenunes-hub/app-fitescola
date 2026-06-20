@@ -143,16 +143,18 @@ def obter_grafico_posicionamento(zona_dir, zona_esq=None):
 def desenhar_decoracoes_pagina(canvas, doc):
     canvas.saveState()
     
-    # --- CABEÇALHO GRÁFICO (LOGOS DO GITHUB) ---
-    # Logo da Escola à Esquerda (X=20, Y=A4_Altura - 55, Largura=60, Altura=22)
+    # --- CABEÇALHO GRÁFICO PROPORCIONAL ---
+    # preserveAspectRatio=True garante que as imagens não ficam esticadas/deformadas
+    
+    # Logo da Escola à Esquerda (Largura máxima alargada para 90 e Altura para 25 para acomodar formatos retangulares)
     if os.path.exists("logo_escola.png"):
-        canvas.drawImage("logo_escola.png", 20, A4[1] - 55, width=60, height=22, mask='auto')
+        canvas.drawImage("logo_escola.png", 20, A4[1] - 55, width=90, height=25, mask='auto', preserveAspectRatio=True)
         
-    # Logo da Bateria FitEscola à Direita (X=A4_Largura - 90, Y=A4_Altura - 55, Largura=70, Altura=22)
+    # Logo da Bateria FitEscola à Direita (Ajustado dinamicamente mantendo a proporção)
     if os.path.exists("logo_fitescola.png"):
-        canvas.drawImage("logo_fitescola.png", A4[0] - 90, A4[1] - 55, width=70, height=22, mask='auto')
+        canvas.drawImage("logo_fitescola.png", A4[0] - 110, A4[1] - 55, width=90, height=25, mask='auto', preserveAspectRatio=True)
 
-    # Linha divisória decorativa superior (ajustada para dar espaço aos logos)
+    # Linha divisória decorativa superior
     canvas.setStrokeColor(colors.HexColor("#1A365D"))
     canvas.setLineWidth(1)
     canvas.line(20, A4[1] - 62, A4[0] - 20, A4[1] - 62)
@@ -169,8 +171,7 @@ def desenhar_decoracoes_pagina(canvas, doc):
 # ==============================================================================
 def gerar_pdf_aluno(row):
     pdf_buffer = io.BytesIO()
-    # Margem superior ajustada para 70 para o conteúdo não colidir com os novos logos do cabeçalho
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, leftMargin=20, rightMargin=20, topMargin=70, bottomMargin=35)
+    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, leftMargin=20, rightMargin=20, topMargin=75, bottomMargin=35)
     styles = getSampleStyleSheet()
     
     style_title = ParagraphStyle('T1', parent=styles['Heading1'], fontSize=14, leading=16, textColor=colors.HexColor("#1A365D"), alignment=1, spaceAfter=2)
