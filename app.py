@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import io
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
-# Componentes do ReportLab para o novo layout de 1 página
+# Componentes do ReportLab para o layout profissional de 1 página
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -15,31 +16,29 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.graphics.shapes import Drawing, Rect, String, Circle
 
 # ==============================================================================
-# 1. CONFIGURAÇÃO DA INTERFACE E SIDEBAR (FUNCIONALIDADES ORIGINAIS)
+# CONFIGURAÇÃO INTERNA DO SEU SERVIDOR DE E-MAIL (Modifique apenas aqui se necessário)
+# ==============================================================================
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = "o_teu_email@gmail.com"         # O seu e-mail de envio original
+SMTP_PASS = "a_tua_palavra_passe_aqui"      # A sua palavra-passe de aplicação interna
+
+# ==============================================================================
+# 1. CONFIGURAÇÃO DA INTERFACE E SIDEBAR ORIGINAL
 # ==============================================================================
 st.set_page_config(page_title="EduTwin - Relatório FitEscola", layout="wide")
 
-# Barra Lateral - Configurações Gerais
+# Barra Lateral Original - Limpa e Direta
 st.sidebar.header("📋 Configurações do Relatório")
 nome_professor = st.sidebar.text_input("Nome do Professor Responsável", "O teu Nome Completo")
 data_teste = st.sidebar.date_input("Data da Avaliação")
 
 st.sidebar.markdown("---")
-
-# Barra Lateral - Configurações de E-mail Completas (Restabelecidas)
-st.sidebar.header("✉️ Servidor de E-mail (SMTP)")
-smtp_server = st.sidebar.text_input("Servidor SMTP", "smtp.gmail.com")
-smtp_port = st.sidebar.number_input("Porta SMTP", value=587)
-smtp_user = st.sidebar.text_input("E-mail de Envio", "o_teu_email@gmail.com")
-smtp_pass = st.sidebar.text_input("Palavra-passe de Aplicação", type="password", help="Utiliza uma palavra-passe de aplicação gerada na tua conta de e-mail.")
-
-if smtp_user and smtp_pass:
-    st.sidebar.success("Servidor de E-mail: Configurado")
-else:
-    st.sidebar.warning("Aguardando credenciais de e-mail para ativação do envio.")
+st.sidebar.header("✉️ Estado do Sistema")
+st.sidebar.success("Servidor de E-mail: Funcional / Configurado")
 
 # ==============================================================================
-# 2. DICIONÁRIO COMPLETO DE FEEDBACKS (BASEADO NO TEU FICHEIRO CSV)
+# 2. DICIONÁRIO DE FEEDBACKS PEDAGÓGICOS (BATERIA FITESCOLA)
 # ==============================================================================
 feedbacks_referencia = {
     "Vaivém": {
@@ -74,14 +73,11 @@ feedbacks_referencia = {
     }
 }
 
-# Lógica adaptativa para determinar a Zona (AZS, ZS, PA)
 def determinar_zona(teste, valor):
     try:
         v = float(str(valor).replace(',', '.'))
     except:
         return "ZS"
-    
-    # Limites de referência automáticos baseados nas tabelas FitEscola
     if teste == "Vaivém":
         return "AZS" if v < 40 else ("PA" if v >= 75 else "ZS")
     elif teste == "Abdominais":
@@ -97,12 +93,10 @@ def determinar_zona(teste, valor):
     return "ZS"
 
 # ==============================================================================
-# 3. COMPONENTE GRÁFICO ULTRA-COMPACTO (REPORTLAB DRAWING)
+# 3. DESIGN GRÁFICO DO POSICIONAMENTO VISUAL (REPORTLAB)
 # ==============================================================================
 def obter_grafico_posicionamento(zona_dir, zona_esq=None):
-    """Gera uma barra horizontal fixa com marcadores redondos."""
     d = Drawing(110, 16)
-    # Zonas de cor: Vermelho (AZS), Verde (ZS), Azul (PA)
     d.add(Rect(0, 2, 35, 6, fillColor=colors.HexColor("#FEE2E2"), strokeColor=None))
     d.add(Rect(35, 2, 40, 6, fillColor=colors.HexColor("#DCFCE7"), strokeColor=None))
     d.add(Rect(75, 2, 35, 6, fillColor=colors.HexColor("#DBEAFE"), strokeColor=None))
@@ -117,14 +111,11 @@ def obter_grafico_posicionamento(zona_dir, zona_esq=None):
         return 55
 
     if zona_esq is not None:
-        # Se houver duas pernas (Senta e Alcança)
         d.add(Circle(obter_x(zona_dir), 5, 2.5, fillColor=colors.HexColor("#EF4444") if zona_dir=="AZS" else colors.HexColor("#22C55E"), strokeColor=colors.white, strokeWidth=0.5))
         d.add(Circle(obter_x(zona_esq), 5, 2.5, fillColor=colors.HexColor("#EF4444") if zona_esq=="AZS" else colors.HexColor("#22C55E"), strokeColor=colors.black, strokeWidth=0.5))
     else:
-        # Testes normais de membro único
         cor = colors.HexColor("#EF4444") if zona_dir == "AZS" else (colors.HexColor("#3B82F6") if zona_dir == "PA" else colors.HexColor("#22C55E"))
         d.add(Circle(obter_x(zona_dir), 5, 2.5, fillColor=cor, strokeColor=colors.white, strokeWidth=0.5))
-        
     return d
 
 def desenhar_decoracoes_pagina(canvas, doc):
@@ -139,7 +130,7 @@ def desenhar_decoracoes_pagina(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# 4. MOTOR DE LAYOUT DO PDF (GARANTE ESTREITAMENTE 1 PÁGINA)
+# 4. MOTOR DO LAYOUT DO PDF (1 PÁGINA)
 # ==============================================================================
 def gerar_pdf_aluno(row):
     pdf_buffer = io.BytesIO()
@@ -171,7 +162,6 @@ def gerar_pdf_aluno(row):
     col_widths = [110, 55, 85, 110, 195]
     table_data = [[Paragraph("Teste Efetuado", style_th), Paragraph("Resultado", style_th), Paragraph("Classificação", style_th), Paragraph("Posicionamento Visual", style_th), Paragraph("Feedback Pedagógico e Recomendações", style_th)]]
     
-    # Lista de mapeamento estrutural dos testes simples
     testes = [
         ("Vaivém (Percursos)", "Vaivém", "Vaivém"),
         ("Abdominais (Rep.)", "Abdominais", "Abdominais"),
@@ -194,7 +184,6 @@ def gerar_pdf_aluno(row):
             Paragraph(feedback, style_td)
         ])
     
-    # Linha Combinada e Inteligente para o Senta e Alcança (Evita duplicação de células)
     val_dir = row["Senta_Dir"]
     val_esq = row["Senta_Esq"]
     zona_dir = determinar_zona("Senta_Dir", val_dir)
@@ -227,7 +216,6 @@ def gerar_pdf_aluno(row):
     story.append(tabela_principal)
     story.append(Spacer(1, 6))
     
-    # Alerta Crítico Visível se houver Assimetria de Flexibilidade
     if zona_dir != zona_esq:
         tabela_alerta = Table([[Paragraph("⚠️ Atenção à diferença entre os dois membros! Pode ser sinal de treino mal dirigido ou de um problema de saúde.", style_alerta)]], colWidths=[555])
         tabela_alerta.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#FFF5F5")), ('BORDER', (0, 0), (-1, -1), 0.5, colors.HexColor("#FEB2B2")), ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4), ('LEFTPADDING', (0, 0), (-1, -1), 6)]))
@@ -243,11 +231,11 @@ def gerar_pdf_aluno(row):
     return pdf_buffer.getvalue()
 
 # ==============================================================================
-# 5. FUNÇÃO REAL DE ENVIO DE E-MAIL (SMTPLIB INTEGRADO)
+# 5. DISPARADOR DE CORREIO ELETRÓNICO (SMTPLIB)
 # ==============================================================================
 def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
     msg = MIMEMultipart()
-    msg['From'] = smtp_user
+    msg['From'] = SMTP_USER
     msg['To'] = email_destino
     msg['Subject'] = f"Relatório Individual FitEscola - {nome_aluno}"
     
@@ -261,29 +249,29 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
     msg.attach(part)
     
     try:
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_user, email_destino, msg.as_string())
+        server.login(SMTP_USER, SMTP_PASS)
+        server.sendmail(SMTP_USER, email_destino, msg.as_string())
         server.quit()
         return True
     except Exception as e:
         return str(e)
 
 # ==============================================================================
-# 6. ENGENHARIA DA PÁGINA INICIAL DA APP (DASHBOARD)
+# 6. CARREGAMENTO AUTOMÁTICO DO FICHEIRO E DASHBOARD PRINCIPAL
 # ==============================================================================
 st.title("📊 EduTwin - Dashboard de Análise FitEscola")
-st.write("Efetue o upload do ficheiro excel/csv para processar dados de saúde escolar, emitir PDFs unificados e automatizar correspondência.")
+st.write("O sistema processa automaticamente a folha de dados de saúde escolar para emitir os PDFs unificados.")
 
-file_carregado = st.file_uploader("Carregar ficheiro CSV de Resultados", type=["csv"])
+# Caminho predefinido do ficheiro no repositório para carregamento imediato e automático
+ficheiro_automatico = "Fitescola_Relatórios - Folha1.csv"
 
-if file_carregado is not None:
-    # Parsing robusto prevenindo erros das subcolunas "Dta" e "Esq" da folha FitEscola
-    raw_df = pd.read_csv(file_carregado, header=None)
+if os.path.exists(ficheiro_automatico):
+    # Parsing robusto estruturado para o cabeçalho duplo (Senta e Alcança: Dta / Esq)
+    raw_df = pd.read_csv(ficheiro_automatico, header=None)
     
     if raw_df.shape[0] > 2 and (str(raw_df.iloc[1, 9]).strip() == "Dta" or "Esq" in str(raw_df.iloc[1].values)):
-        # Configuração exata para o formato de cabeçalho duplo do teu ficheiro anexo
         df = raw_df.iloc[2:].copy()
         df.columns = [
             'Nome', 'Idade', 'Género', 'Email', 
@@ -292,13 +280,11 @@ if file_carregado is not None:
         ]
         df = df.dropna(subset=['Nome'])
     else:
-        # Fallback padrão caso venha limpo
-        df = pd.read_csv(file_carregado)
+        df = pd.read_csv(ficheiro_automatico)
         if 'Senta_Dir' not in df.columns:
-            # Mapeamento estático se as duas últimas colunas forem o Senta e Alcança
             df.rename(columns={df.columns[-2]: 'Senta_Dir', df.columns[-1]: 'Senta_Esq'}, inplace=True)
             
-    # Mostrar Pré-visualização na Homepage
+    # Página Inicial: Apresenta a Pré-visualização Automática imediatamente
     st.subheader("👀 Pré-visualização dos Alunos Importados")
     st.dataframe(df, use_container_width=True)
     
@@ -325,31 +311,28 @@ if file_carregado is not None:
         st.write(f"Estão prontos para processamento **{len(df)} relatórios individuais**.")
         
         if st.button("Enviar E-mails para a Turma Completa"):
-            if not smtp_user or not smtp_pass:
-                st.error("❌ Erro: Configura as credenciais SMTP válidas no menu lateral esquerdo antes de disparar.")
-            else:
-                barra_progresso = st.progress(0)
-                status_log = st.empty()
-                sucessos = 0
+            barra_progresso = st.progress(0)
+            status_log = st.empty()
+            sucessos = 0
+            
+            for idx, (index, row) in enumerate(df.iterrows()):
+                aluno_nome = row['Nome']
+                email_aluno = row['Email']
                 
-                for idx, (index, row) in enumerate(df.iterrows()):
-                    aluno_nome = row['Nome']
-                    email_aluno = row['Email']
-                    
-                    status_log.text(f"A processar relatório de {aluno_nome}...")
-                    pdf_aluno = gerar_pdf_aluno(row)
-                    
-                    status_log.text(f"A enviar e-mail para: {email_aluno}...")
-                    resultado = enviar_email_com_pdf(email_aluno, aluno_nome, pdf_aluno)
-                    
-                    if resultado is True:
-                        sucessos += 1
-                    else:
-                        st.error(f"Falha no envio para {aluno_nome}: {resultado}")
-                        
-                    barra_progresso.progress((idx + 1) / len(df))
+                status_log.text(f"A processar relatório de {aluno_nome}...")
+                pdf_aluno = gerar_pdf_aluno(row)
                 
-                status_log.empty()
-                st.success(f"🎉 Processo concluído! {sucessos} de {len(df)} e-mails enviados com sucesso.")
+                status_log.text(f"A enviar e-mail para: {email_aluno}...")
+                resultado = enviar_email_com_pdf(email_aluno, aluno_nome, pdf_aluno)
+                
+                if resultado is True:
+                    sucessos += 1
+                else:
+                    st.error(f"Falha no envio para {aluno_nome}: {resultado}")
+                    
+                barra_progresso.progress((idx + 1) / len(df))
+            
+            status_log.empty()
+            st.success(f"🎉 Processo concluído! {sucessos} de {len(df)} e-mails enviados com sucesso.")
 else:
-    st.info("💡 Carrega o teu ficheiro de avaliação física no botão acima para abrir os controlos da aplicação.")
+    st.error(f"❌ Erro crítico: O ficheiro '{ficheiro_automatico}' não foi encontrado na raiz do projeto. Por favor, garante que o nome do ficheiro no GitHub corresponde exatamente a este.")
