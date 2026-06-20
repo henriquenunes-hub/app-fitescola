@@ -208,8 +208,8 @@ def avaliar_senta_alcanca_combinado(val_dta_raw, val_esq_raw, idade, genero):
     return texto_resultados, texto_feedbacks, val_dta, val_esq, zs, pa, classe_dta, classe_esq
 
 def gerar_grafico_linha(val_aluno, zs, pa, teste_sigla, genero):
-    """Gera um gráfico horizontal limpo, com cores dos indicadores trocadas."""
-    fig, ax = plt.subplots(figsize=(4.5, 0.7))
+    # Reduza o tamanho da figura antes de a guardar/inserir
+fig, ax = plt.subplots(figsize=(1.5, 0.4)) # Valores pequenos em polegadas
     
     inverter = teste_sigla in ["VEL", "AGI"]
     if inverter:
