@@ -171,6 +171,37 @@ def avaliar_teste(valor, idade, genero, teste):
             
     return classe, fb_texto, val, zs, pa
 
+def avaliar_senta_alcanca_combinado(val_dta_raw, val_esq_raw, idade, genero):
+    """
+    Avalia ambas as pernas no Senta e Alcança, elimina feedbacks duplicados 
+    se estiverem na mesma zona e valida assimetrias corporais (> 4cm).
+    """
+    # 1. Avalia individualmente cada perna usando a função base 'SA'
+    classe_dta, fb_dta, val_dta, zs, pa = avaliar_teste(val_dta_raw, idade, genero, "SA")
+    classe_esq, fb_esq, val_esq, _, _ = avaliar_teste(val_esq_raw, idade, genero, "SA")
+    
+    # Validação caso faltem dados num dos membros
+    if classe_dta == "N/A" or classe_esq == "N/A":
+        return "N/A", "Resultados inválidos.", "Sem orientação pedagógica registada."
+
+    # 2. Formata a linha de resultados
+    texto_resultados = f"Perna Direita: {val_dta} cm ({classe_dta})\nPerna Esquerda: {val_esq} cm ({classe_esq})"
+    
+    # 3. Lógica de agrupamento de feedbacks (Não repetir se a zona for igual)
+    if classe_dta == classe_esq:
+        texto_feedbacks = fb_dta  # Zonas iguais: mostra o parágrafo apenas uma vez
+    else:
+        # Zonas diferentes: discrimina o feedback de cada membro
+        texto_feedbacks = f"Perna Direita ({classe_dta}): {fb_dta}\n\nPerna Esquerda ({classe_esq}): {fb_esq}"
+        
+    # 4. Função de verificação de assimetria (Diferença estrita superior a 4)
+    diferenca = abs(val_dta - val_esq)
+    if diferenca > 4:
+        aviso_assimetria = "\n\nAtenção à diferença entre os dois membros! Pode ser sinal de treino mal dirigido ou de um problema de saúde."
+        texto_feedbacks += aviso_assimetria
+        
+    return texto_resultados, texto_feedbacks, val_dta, val_esq, zs, pa
+    
     # 2. Mapeamento da sigla interna da App para o nome exato da linha do teu CSV
     mapa_nomes_csv = {
         "VV": "Vaivém",
