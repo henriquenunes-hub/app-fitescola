@@ -278,7 +278,7 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
     msg['To'] = email_destino
     msg['Subject'] = f"Relatório Individual FitEscola - {nome_aluno}"
     
-    corpo = f"Olá {nome_aluno},\n\nSegue em anexo o teu Relatório de Aptidão Física Individual da bateria FitEscola, validado pelo Professor {nome_professor}.\n\nCumprimentos,\nHenrique Nunes"
+    corpo = f"Viva {nome_aluno},\n\nSegue em anexo o teu Relatório de Aptidão Física Individual da bateria FitEscola.\n\nCumprimentos,\nHenrique Nunes"
     msg.attach(MIMEText(corpo, 'plain'))
     
     part = MIMEBase('application', "octet-stream")
