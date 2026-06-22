@@ -261,8 +261,8 @@ def gerar_pdf_aluno(row):
         story.append(tabela_alerta)
         story.append(Spacer(1, 6))
     
-    story.append(Paragraph("<b>Orientações de Desenvolvimento Desportivo:</b>", style_td))
-    conteudo_orientacoes = "• A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
+    story.append(Paragraph("<b>Orientações de Professor:</b>", style_td))
+    conteudo_orientacoes = "• O círculo no gráfico identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário nas aulas de Educação Física e em ser mais ativo no teu dia a dia."
     story.append(Paragraph(conteudo_orientacoes, style_orientacoes))
     
     doc.build(story, onFirstPage=desenhar_decoracoes_pagina, onLaterPages=desenhar_decoracoes_pagina)
@@ -278,7 +278,7 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
     msg['To'] = email_destino
     msg['Subject'] = f"Relatório Individual FitEscola - {nome_aluno}"
     
-    corpo = f"Olá {nome_aluno},\n\nSegue em anexo o teu Relatório de Aptidão Física Individual da bateria FitEscola, validado pelo Professor {nome_professor}.\n\nMelhores cumprimentos,\nDireção Pedagógica"
+    corpo = f"Olá {nome_aluno},\n\nSegue em anexo o teu Relatório de Aptidão Física Individual da bateria FitEscola, validado pelo Professor {nome_professor}.\n\nCumprimentos,\nHenrique Nunes"
     msg.attach(MIMEText(corpo, 'plain'))
     
     part = MIMEBase('application', "octet-stream")
