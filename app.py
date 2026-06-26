@@ -78,10 +78,14 @@ feedbacks_referencia = {
 }
 
 def determinar_zona(teste, valor, genero="M"):
+    # Verifica se o valor está em falta (NaN ou String vazia)
+    if pd.isna(valor) or str(valor).strip().lower() in ['nan', '']:
+        return None
+        
     try:
         v = float(str(valor).replace(',', '.'))
     except:
-        return "ZS"
+        return None
     
     gen = str(genero).strip().upper()
     
@@ -118,6 +122,10 @@ def determinar_zona(teste, valor, genero="M"):
 # 3. DESIGN GRÁFICO DO POSICIONAMENTO VISUAL (REPORTLAB)
 # ==============================================================================
 def obter_grafico_posicionamento(zona_dir, zona_esq=None):
+    # Se ambos os parâmetros estiverem em falta, não desenha o gráfico
+    if zona_dir is None and zona_esq is None:
+        return ""
+        
     d = Drawing(110, 16)
     d.add(Rect(0, 2, 35, 6, fillColor=colors.HexColor("#FEE2E2"), strokeColor=None))
     d.add(Rect(35, 2, 40, 6, fillColor=colors.HexColor("#DCFCE7"), strokeColor=None))
@@ -133,24 +141,23 @@ def obter_grafico_posicionamento(zona_dir, zona_esq=None):
         return 55
 
     if zona_esq is not None:
-        d.add(Circle(obter_x(zona_dir), 5, 2.5, fillColor=colors.HexColor("#EF4444") if zona_dir=="AZS" else colors.HexColor("#22C55E"), strokeColor=colors.white, strokeWidth=0.5))
-        d.add(Circle(obter_x(zona_esq), 5, 2.5, fillColor=colors.HexColor("#EF4444") if zona_esq=="AZS" else colors.HexColor("#22C55E"), strokeColor=colors.black, strokeWidth=0.5))
+        if zona_dir is not None:
+            d.add(Circle(obter_x(zona_dir), 5, 2.5, fillColor=colors.HexColor("#EF4444") if zona_dir=="AZS" else colors.HexColor("#22C55E"), strokeColor=colors.white, strokeWidth=0.5))
+        if zona_esq is not None:
+            d.add(Circle(obter_x(zona_esq), 5, 2.5, fillColor=colors.HexColor("#EF4444") if zona_esq=="AZS" else colors.HexColor("#22C55E"), strokeColor=colors.black, strokeWidth=0.5))
     else:
-        cor = colors.HexColor("#EF4444") if zona_dir == "AZS" else (colors.HexColor("#3B82F6") if zona_dir == "PA" else colors.HexColor("#22C55E"))
-        d.add(Circle(obter_x(zona_dir), 5, 2.5, fillColor=cor, strokeColor=colors.white, strokeWidth=0.5))
+        if zona_dir is not None:
+            cor = colors.HexColor("#EF4444") if zona_dir == "AZS" else (colors.HexColor("#3B82F6") if zona_dir == "PA" else colors.HexColor("#22C55E"))
+            d.add(Circle(obter_x(zona_dir), 5, 2.5, fillColor=cor, strokeColor=colors.white, strokeWidth=0.5))
     return d
 
 def desenhar_decoracoes_pagina(canvas, doc):
     canvas.saveState()
     
     # --- CABEÇALHO GRÁFICO PROPORCIONAL ---
-    # preserveAspectRatio=True garante que as imagens não ficam esticadas/deformadas
-    
-    # Logo da Escola à Esquerda (Largura máxima alargada para 90 e Altura para 25 para acomodar formatos retangulares)
     if os.path.exists("logo_escola.png"):
         canvas.drawImage("logo_escola.png", 20, A4[1] - 55, width=90, height=25, mask='auto', preserveAspectRatio=True)
         
-    # Logo da Bateria FitEscola à Direita (Ajustado dinamicamente mantendo a proporção)
     if os.path.exists("logo_fitescola.png"):
         canvas.drawImage("logo_fitescola.png", A4[0] - 110, A4[1] - 55, width=90, height=25, mask='auto', preserveAspectRatio=True)
 
@@ -167,7 +174,7 @@ def desenhar_decoracoes_pagina(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# 4. MOTOR DO LAYOUT DO PDF (GARANTE 1 PÁGINA COM CABEÇALHO INTEGRADO)
+# 4. MOTOR DO LAYOUT DO PDF (GARANTE 1 PÁGINA COM TRATAMENTO DE NA)
 # ==============================================================================
 def gerar_pdf_aluno(row):
     pdf_buffer = io.BytesIO()
@@ -187,9 +194,10 @@ def gerar_pdf_aluno(row):
     story.append(Paragraph("RELATÓRIO DE APTIDÃO FÍSICA INDIVIDUAL", style_title))
     story.append(Paragraph("Avaliação de Parâmetros Motores e Funcionais | Bateria FitEscola", style_subtitle))
     
+    # Campo "Contacto" totalmente removido daqui
     dados_aluno = [
         [Paragraph(f"<b>Nome do Aluno:</b> {row['Nome']}", style_meta), Paragraph(f"<b>Idade:</b> {row['Idade']} anos", style_meta), Paragraph(f"<b>Género:</b> {row['Género']}", style_meta)],
-        [Paragraph(f"<b>Data da Avaliação:</b> {data_teste.strftime('%d/%m/%Y')}", style_meta), Paragraph(f"<b>Contacto:</b> {row['Email']}", style_meta), ""]
+        [Paragraph(f"<b>Data da Avaliação:</b> {data_teste.strftime('%d/%m/%Y')}", style_meta), "", ""]
     ]
     tabela_meta = Table(dados_aluno, colWidths=[200, 150, 205])
     tabela_meta.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('BOTTOMPADDING', (0,0), (-1,-1), 2), ('TOPPADDING', (0,0), (-1,-1), 2)]))
@@ -212,35 +220,58 @@ def gerar_pdf_aluno(row):
     for nome_exibicao, chave_zona, chave_fb in testes:
         val = row[nome_exibicao]
         zona = determinar_zona(chave_zona, val, genero_aluno)
-        txt_zona = "Abaixo Zona Saudável" if zona=="AZS" else ("Perfil Atlético" if zona=="PA" else "Zona Saudável")
-        feedback = feedbacks_referencia[chave_fb][zona]
         
-        table_data.append([
-            Paragraph(nome_exibicao, style_td),
-            Paragraph(str(val), style_td_center),
-            Paragraph(txt_zona, style_td_center),
-            obter_grafico_posicionamento(zona),
-            Paragraph(feedback, style_td)
-        ])
+        if zona is None:
+            # Deixa as colunas vazias se o teste não foi realizado
+            table_data.append([
+                Paragraph(nome_exibicao, style_td),
+                Paragraph("", style_td_center),
+                Paragraph("", style_td_center),
+                "", 
+                Paragraph("", style_td)
+            ])
+        else:
+            txt_zona = "Abaixo Zona Saudável" if zona=="AZS" else ("Perfil Atlético" if zona=="PA" else "Zona Saudável")
+            feedback = feedbacks_referencia[chave_fb][zona]
+            table_data.append([
+                Paragraph(nome_exibicao, style_td),
+                Paragraph(str(val), style_td_center),
+                Paragraph(txt_zona, style_td_center),
+                obter_grafico_posicionamento(zona),
+                Paragraph(feedback, style_td)
+            ])
     
     val_dir = row["Senta_Dir"]
     val_esq = row["Senta_Esq"]
     zona_dir = determinar_zona("Senta_Dir", val_dir, genero_aluno)
     zona_esq = determinar_zona("Senta_Esq", val_esq, genero_aluno)
     
-    txt_z_dir = "AZS" if zona_dir=="AZS" else ("PA" if zona_dir=="PA" else "ZS")
-    txt_z_esq = "AZS" if zona_esq=="AZS" else ("PA" if zona_esq=="PA" else "ZS")
-    
-    fb_dir = feedbacks_referencia["Flexibilidade"][zona_dir]
-    fb_esq = feedbacks_referencia["Flexibilidade"][zona_esq]
-    
-    table_data.append([
-        Paragraph("Senta e Alcança (cm)", style_td),
-        Paragraph(f"<b>Dir:</b> {val_dir} cm<br/><b>Esq:</b> {val_esq} cm", style_td_center),
-        Paragraph(f"<b>Dir:</b> {txt_z_dir}<br/><b>Esq:</b> {txt_z_esq}", style_td_center),
-        obter_grafico_posicionamento(zona_dir, zona_esq),
-        Paragraph(f"<b>Membro Dir:</b> {fb_dir}<br/><b>Membro Esq:</b> {fb_esq}", style_td)
-    ])
+    if zona_dir is None and zona_esq is None:
+        # Se ambos estiverem em falta, deixa a linha da flexibilidade em branco
+        table_data.append([
+            Paragraph("Senta e Alcança (cm)", style_td),
+            Paragraph("", style_td_center),
+            Paragraph("", style_td_center),
+            "",
+            Paragraph("", style_td)
+        ])
+    else:
+        txt_z_dir = "AZS" if zona_dir=="AZS" else ("PA" if zona_dir=="PA" else "ZS") if zona_dir else "-"
+        txt_z_esq = "AZS" if zona_esq=="AZS" else ("PA" if zona_esq=="PA" else "ZS") if zona_esq else "-"
+        
+        fb_dir = feedbacks_referencia["Flexibilidade"][zona_dir] if zona_dir else "Dados não registados para o membro direito."
+        fb_esq = feedbacks_referencia["Flexibilidade"][zona_esq] if zona_esq else "Dados não registados para o membro esquerdo."
+        
+        res_dir_txt = f"{val_dir} cm" if zona_dir else "-"
+        res_esq_txt = f"{val_esq} cm" if zona_esq else "-"
+        
+        table_data.append([
+            Paragraph("Senta e Alcança (cm)", style_td),
+            Paragraph(f"<b>Dir:</b> {res_dir_txt}<br/><b>Esq:</b> {res_esq_txt}", style_td_center),
+            Paragraph(f"<b>Dir:</b> {txt_z_dir}<br/><b>Esq:</b> {txt_z_esq}", style_td_center),
+            obter_grafico_posicionamento(zona_dir, zona_esq),
+            Paragraph(f"<b>Membro Dir:</b> {fb_dir}<br/><b>Membro Esq:</b> {fb_esq}", style_td)
+        ])
     
     tabela_principal = Table(table_data, colWidths=col_widths)
     tabela_principal.setStyle(TableStyle([
@@ -255,14 +286,15 @@ def gerar_pdf_aluno(row):
     story.append(tabela_principal)
     story.append(Spacer(1, 6))
     
-    if zona_dir != zona_esq:
+    # Só exibe o aviso de assimetria se ambos os testes existirem e forem diferentes
+    if zona_dir is not None and zona_esq is not None and zona_dir != zona_esq:
         tabela_alerta = Table([[Paragraph("⚠️ Atenção à diferença entre os dois membros! Pode ser sinal de treino mal dirigido ou de um problema de saúde.", style_alerta)]], colWidths=[555])
         tabela_alerta.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#FFF5F5")), ('BORDER', (0, 0), (-1, -1), 0.5, colors.HexColor("#FEB2B2")), ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4), ('LEFTPADDING', (0, 0), (-1, -1), 6)]))
         story.append(tabela_alerta)
         story.append(Spacer(1, 6))
     
-    story.append(Paragraph("<b>Orientações de Professor:</b>", style_td))
-    conteudo_orientacoes = "• O círculo no gráfico identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário nas aulas de Educação Física e em ser mais ativo no teu dia a dia."
+    story.append(Paragraph("<b>Orientações de Desenvolvimento Desportivo:</b>", style_td))
+    conteudo_orientacoes = "• A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
     story.append(Paragraph(conteudo_orientacoes, style_orientacoes))
     
     doc.build(story, onFirstPage=desenhar_decoracoes_pagina, onLaterPages=desenhar_decoracoes_pagina)
@@ -278,7 +310,7 @@ def enviar_email_com_pdf(email_destino, nome_aluno, pdf_bytes):
     msg['To'] = email_destino
     msg['Subject'] = f"Relatório Individual FitEscola - {nome_aluno}"
     
-    corpo = f"Viva {nome_aluno},\n\nSegue em anexo o teu Relatório de Aptidão Física Individual da bateria FitEscola.\n\nCumprimentos,\nHenrique Nunes"
+    corpo = f"Olá {nome_aluno},\n\nSegue em anexo o teu Relatório de Aptidão Física Individual da bateria FitEscola, validado pelo Professor {nome_professor}.\n\nMelhores cumprimentos,\nDireção Pedagógica"
     msg.attach(MIMEText(corpo, 'plain'))
     
     part = MIMEBase('application', "octet-stream")
@@ -306,7 +338,6 @@ st.write("O sistema processa automaticamente a folha de dados em nuvem para emit
 try:
     raw_df = pd.read_csv(url_ficheiro, header=None)
     
-    # Tratamento inteligente para cabeçalho duplo (Deteta se a linha 1 tem 'Dta' e 'Esq')
     if raw_df.shape[0] > 2 and (str(raw_df.iloc[1, 9]).strip() == "Dta" or "Esq" in str(raw_df.iloc[1].values)):
         df = raw_df.iloc[2:].copy()
         df.columns = [
