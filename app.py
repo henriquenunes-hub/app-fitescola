@@ -294,7 +294,7 @@ def gerar_pdf_aluno(row):
         story.append(Spacer(1, 6))
     
     story.append(Paragraph("<b>Orientações de Desenvolvimento Desportivo:</b>", style_td))
-    conteudo_orientacoes = "• A silhueta assinalada identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
+    conteudo_orientacoes = "• O círculo no gráfico identifica a tua posição atual face às referências nacionais de saúde.<br/>• Lembra-te que a aptidão física evolui com o teu compromisso diário e consistência motora nas aulas."
     story.append(Paragraph(conteudo_orientacoes, style_orientacoes))
     
     doc.build(story, onFirstPage=desenhar_decoracoes_pagina, onLaterPages=desenhar_decoracoes_pagina)
